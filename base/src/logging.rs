@@ -1,6 +1,6 @@
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::EnvFilter;
 
 pub fn init_logging() {
     let format = tracing_subscriber::fmt::format()
@@ -8,8 +8,9 @@ pub fn init_logging() {
         .with_target(true) // don't include targets
         .with_thread_names(true) // include the name of the current thread
         .with_source_location(false)
-        .pretty().with_source_location(false).compact(); // use the `Compact` formatting style.
-
+        .pretty()
+        .with_source_location(false)
+        .compact(); // use the `Compact` formatting style.
 
     // Create a `fmt` subscriber that uses our custom event format, and set it
     // as the default.

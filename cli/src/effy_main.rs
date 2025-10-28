@@ -1,6 +1,5 @@
-use anyhow::Context;
-use tracing_error::SpanTrace;
 use effy_base::logging::{debug, error, info, info_span, warn};
+use tracing_error::SpanTrace;
 
 fn main() {
     effy_base::logging::init_logging();
