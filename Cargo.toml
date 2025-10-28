@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["base","cli"]
+members = ["base","cli", "tokenizer"]
 
 [workspace.dependencies]
 
