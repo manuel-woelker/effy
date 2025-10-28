@@ -1,0 +1,17 @@
+# Main command line interface for the compiler and interpreter
+
+[package]
+name = "effy"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "effy"
+path = "src/effy_main.rs"
+
+[dependencies]
+effy-base = { version = "0.1.0", path = "../base" }
+tracing-error = "0.2.1"
+anyhow = "1.0.100"
+color-eyre = "0.6.5"
+
