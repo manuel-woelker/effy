@@ -1,9 +1,20 @@
 use crate::token::{Token, TokenKind};
+use effy_base::error::EffyResult;
 use effy_base::source_file::SourceFile;
 use effy_base::source_location::SourceLocation;
 use std::str::Chars;
 
-pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = Token<'_>> {
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+enum TokenizerState {
+    Reading,
+    LastChar,
+    EndOfFile,
+    Done,
+}
+
+const EOF: char = '␄';
+
+pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = EffyResult<Token<'_>>> {
     let mut tokenizer = Tokenizer {
         source_file,
         start_position: 0,
@@ -11,9 +22,10 @@ pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = Token<'_>> 
         chars: source_file.content().chars(),
         current_char: '\0',
         next_char: '\0',
-        is_done: false,
+        state: TokenizerState::Reading,
     };
-    // Initialize next_char
+    // Initialize next_char and current_char
+    tokenizer.advance();
     tokenizer.advance();
     tokenizer.current_position = 0;
     tokenizer
@@ -26,39 +38,69 @@ pub struct Tokenizer<'src> {
     chars: Chars<'src>,
     current_char: char,
     next_char: char,
-    is_done: bool,
+    state: TokenizerState,
 }
 
 impl<'src> Tokenizer<'src> {
     fn advance(&mut self) {
-        self.current_char = self.next_char;
+        match self.state {
+            TokenizerState::EndOfFile | TokenizerState::Done => {
+                // Nothing left to do
+                return;
+            }
+            TokenizerState::LastChar => {
+                self.current_position += self.current_char.len_utf8();
+                self.state = TokenizerState::EndOfFile;
+                self.current_char = EOF;
+                return;
+            }
+            TokenizerState::Reading => {
+                // continue
+            }
+        }
         self.current_position += self.current_char.len_utf8();
-        self.next_char = self.chars.next().unwrap_or('\0');
+        self.current_char = self.next_char;
+        match self.chars.next() {
+            None => {
+                self.next_char = EOF;
+                self.state = TokenizerState::LastChar;
+            }
+            Some(next_char) => {
+                self.next_char = next_char;
+            }
+        }
     }
 
-    pub fn create_token(&mut self, token_kind: TokenKind) -> Token<'src> {
+    pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token<'src>> {
+        self.advance();
         let location =
             SourceLocation::new(self.source_file, self.start_position, self.current_position);
         self.start_position = self.current_position;
-        Token::new(token_kind, location)
+        Ok(Token::new(token_kind, location))
     }
-    fn next_token(&mut self) -> Option<Token<'src>> {
-        if self.is_done {
-            return None;
-        }
-        if self.next_char == '\0' {
-            self.is_done = true;
-            return None;
-        }
+
+    fn next_token(&mut self) -> Option<EffyResult<Token<'src>>> {
         loop {
-            self.start_position = self.current_position;
-            self.advance();
             if !self.current_char.is_whitespace() {
                 break;
             }
+            self.advance();
         }
-
+        self.start_position = self.current_position;
+        match self.state {
+            TokenizerState::Reading | TokenizerState::LastChar => {
+                // continue
+            }
+            TokenizerState::EndOfFile => {
+                self.state = TokenizerState::Done;
+                return Some(self.create_token(TokenKind::EndOfFile));
+            }
+            TokenizerState::Done => {
+                return None;
+            }
+        }
         Some(match self.current_char {
+            // Symbols
             '(' => self.create_token(TokenKind::ParenOpen),
             ')' => self.create_token(TokenKind::ParenClose),
             '{' => self.create_token(TokenKind::BraceOpen),
@@ -69,8 +111,35 @@ impl<'src> Tokenizer<'src> {
             ';' => self.create_token(TokenKind::Semicolon),
             ':' => self.create_token(TokenKind::Colon),
             '.' => self.create_token(TokenKind::Dot),
+            // Strings
+            '"' => loop {
+                self.advance();
+                match self.current_char {
+                    EOF => return Some(self.create_token(TokenKind::Unexpected)), // TODO: bail on eof?
+                    '"' => {
+                        return Some(self.create_token(TokenKind::String));
+                    }
+                    _ => {}
+                }
+            },
+            // Identifiers and keywords
+            'a'..='z' | 'A'..='Z' | '_' => {
+                loop {
+                    self.advance();
+                    if !(self.next_char.is_alphanumeric() || self.next_char == '_') {
+                        break;
+                    }
+                }
+                let identifier =
+                    &self.source_file.content()[self.start_position..self.current_position];
+                let token_kind = match identifier {
+                    "fun" => TokenKind::Fun,
+                    _ => TokenKind::Identifier,
+                };
+                self.create_token(token_kind)
+            }
             _other => {
-                self.is_done = true;
+                self.state = TokenizerState::EndOfFile;
                 self.create_token(TokenKind::Unexpected)
             }
         })
@@ -78,7 +147,7 @@ impl<'src> Tokenizer<'src> {
 }
 
 impl<'src> Iterator for Tokenizer<'src> {
-    type Item = Token<'src>;
+    type Item = EffyResult<Token<'src>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
@@ -90,7 +159,7 @@ mod tests {
     use crate::tokenize::tokenize;
     use effy_base::FilePath;
     use effy_base::source_file::SourceFile;
-    use expect_test::Expect;
+    use expect_test::{Expect, expect};
     use std::fmt::Write;
 
     fn input_to_test_string(input: &str) -> String {
@@ -101,6 +170,7 @@ mod tests {
             let Some(token) = tokenizer.next() else {
                 break;
             };
+            let token = token.unwrap();
             writeln!(
                 test_string,
                 "🧩 {:3}+{:<2} {:14} {}",
@@ -122,7 +192,10 @@ mod tests {
 
     fn test_lex_symbol(input: &str, expected: &str) {
         let test_string = input_to_test_string(input);
-        assert_eq!(test_string, format!("🧩   0+1  {expected:14} {input}\n"));
+        assert_eq!(
+            test_string,
+            format!("🧩   0+1  {expected:14} {input}\n🧩   1+0  End of File    \n")
+        );
     }
 
     macro_rules! test_lex_symbol {
@@ -147,5 +220,112 @@ mod tests {
         (colon ":" "Colon")
         (dot "." "Dot")
         (comma "," "Comma")
+    );
+
+    macro_rules! test_lex {
+        ($name:ident, $input:literal, $expected:expr) => {
+            #[test]
+            fn $name() {
+                test_lexer($input, $expected);
+            }
+        };
+    }
+
+    test_lex!(
+        empty,
+        "",
+        expect!([r#"
+            🧩   0+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        parens,
+        "()",
+        expect!([r#"
+            🧩   0+1  Open Parenthesis (
+            🧩   1+1  Close Parenthesis )
+            🧩   2+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        string_empty,
+        "\"\"",
+        expect!([r#"
+            🧩   0+2  String         ""
+            🧩   2+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        string_one_char,
+        "\"x\"",
+        expect!([r#"
+            🧩   0+3  String         "x"
+            🧩   3+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        string_multiple_chars,
+        "\"hello\"",
+        expect!([r#"
+            🧩   0+7  String         "hello"
+            🧩   7+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        string_astronaut,
+        "\"👨‍🚀\"",
+        expect!([r#"
+            🧩   0+13 String         "👨‍🚀"
+            🧩  13+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        fun,
+        "fun ",
+        expect!([r#"
+            🧩   0+3  Identifier     fun
+            🧩   4+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        identifier,
+        "foobar",
+        expect!([r#"
+            🧩   0+6  Identifier     foobar
+            🧩   6+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        function,
+        "fun foo() {}",
+        expect!([r#"
+            🧩   0+3  Identifier     fun
+            🧩   4+3  Identifier     foo
+            🧩   7+1  Open Parenthesis (
+            🧩   8+1  Close Parenthesis )
+            🧩  10+1  Open Brace     {
+            🧩  11+1  Close Brace    }
+            🧩  12+0  End of File    
+        "#])
+    );
+    test_lex!(
+        function_call,
+        "print(\"hello\");",
+        expect!([r#"
+            🧩   0+5  Identifier     print
+            🧩   5+1  Open Parenthesis (
+            🧩   6+7  String         "hello"
+            🧩  13+1  Close Parenthesis )
+            🧩  14+1  Semicolon      ;
+            🧩  15+0  End of File    
+        "#])
     );
 }
