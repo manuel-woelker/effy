@@ -1,0 +1,12 @@
+[package]
+name = "effy-ast"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+effy-base = { version = "0.1.0", path = "../base" }
+effy-tokenizer = { version = "0.1.0", path = "../tokenizer" }
+
+[dev-dependencies]
+expect-test = "1.5.1"
+strip-ansi-escapes = "0.2.1"

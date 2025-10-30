@@ -1,13 +1,13 @@
 use crate::source_file::SourceFile;
 use std::fmt::{Debug, Formatter};
 
-pub struct SourceLocation<'src> {
+pub struct SourceLocation<'source> {
     pub start: usize,
     pub end: usize,
-    pub source_file: &'src SourceFile,
+    pub source_file: &'source SourceFile,
 }
 
-impl<'src> Debug for SourceLocation<'src> {
+impl<'source> Debug for SourceLocation<'source> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -19,8 +19,8 @@ impl<'src> Debug for SourceLocation<'src> {
     }
 }
 
-impl<'src> SourceLocation<'src> {
-    pub fn new(source_file: &'src SourceFile, start: usize, end: usize) -> Self {
+impl<'source> SourceLocation<'source> {
+    pub fn new(source_file: &'source SourceFile, start: usize, end: usize) -> Self {
         Self {
             source_file,
             start,
@@ -36,7 +36,7 @@ impl<'src> SourceLocation<'src> {
         self.end
     }
 
-    pub fn source_file(&self) -> &'src SourceFile {
+    pub fn source_file(&self) -> &'source SourceFile {
         self.source_file
     }
 }

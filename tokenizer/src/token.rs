@@ -48,13 +48,13 @@ impl Display for TokenKind {
     }
 }
 
-pub struct Token<'src> {
+pub struct Token<'source> {
     kind: TokenKind,
-    location: SourceLocation<'src>,
+    location: SourceLocation<'source>,
 }
 
-impl<'src> Token<'src> {
-    pub fn new(kind: TokenKind, location: SourceLocation<'src>) -> Self {
+impl<'source> Token<'source> {
+    pub fn new(kind: TokenKind, location: SourceLocation<'source>) -> Self {
         Self { kind, location }
     }
 
@@ -62,11 +62,11 @@ impl<'src> Token<'src> {
         self.kind
     }
 
-    pub fn location(&self) -> &SourceLocation<'src> {
+    pub fn location(&self) -> &SourceLocation<'source> {
         &self.location
     }
 
-    pub fn lexeme(&self) -> &'src str {
+    pub fn lexeme(&self) -> &'source str {
         &self.location.source_file().content()[self.location.start()..self.location.end()]
     }
 }

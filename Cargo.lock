@@ -113,6 +113,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "effy-ast"
+version = "0.1.0"
+dependencies = [
+ "effy-base",
+ "effy-tokenizer",
+ "expect-test",
+ "strip-ansi-escapes",
+]
+
+[[package]]
 name = "effy-base"
 version = "0.1.0"
 dependencies = [
@@ -124,6 +134,17 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "effy-parser"
+version = "0.1.0"
+dependencies = [
+ "effy-ast",
+ "effy-base",
+ "effy-tokenizer",
+ "expect-test",
+ "strip-ansi-escapes",
 ]
 
 [[package]]

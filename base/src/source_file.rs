@@ -6,8 +6,11 @@ pub struct SourceFile {
 }
 
 impl SourceFile {
-    pub fn new(path: FilePath, content: SourceString) -> Self {
-        Self { path, content }
+    pub fn new(path: impl Into<FilePath>, content: impl Into<SourceString>) -> Self {
+        Self {
+            path: path.into(),
+            content: content.into(),
+        }
     }
 
     pub fn path(&self) -> &FilePath {

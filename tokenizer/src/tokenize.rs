@@ -32,17 +32,17 @@ pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = EffyResult<
     tokenizer
 }
 
-pub struct Tokenizer<'src> {
-    source_file: &'src SourceFile,
+pub struct Tokenizer<'source> {
+    source_file: &'source SourceFile,
     start_position: usize,
     current_position: usize,
-    chars: Chars<'src>,
+    chars: Chars<'source>,
     current_char: char,
     next_char: char,
     state: TokenizerState,
 }
 
-impl<'src> Tokenizer<'src> {
+impl<'source> Tokenizer<'source> {
     fn advance(&mut self) {
         match self.state {
             TokenizerState::EndOfFile | TokenizerState::Done => {
@@ -72,18 +72,18 @@ impl<'src> Tokenizer<'src> {
         }
     }
 
-    pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token<'src>> {
+    pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token<'source>> {
         self.advance();
         let location = self.create_location();
         self.start_position = self.current_position;
         Ok(Token::new(token_kind, location))
     }
 
-    fn create_location(&mut self) -> SourceLocation<'src> {
+    fn create_location(&mut self) -> SourceLocation<'source> {
         SourceLocation::new(self.source_file, self.start_position, self.current_position)
     }
 
-    fn next_token(&mut self) -> Option<EffyResult<Token<'src>>> {
+    fn next_token(&mut self) -> Option<EffyResult<Token<'source>>> {
         loop {
             if !self.current_char.is_whitespace() {
                 break;
@@ -160,8 +160,8 @@ impl<'src> Tokenizer<'src> {
     }
 }
 
-impl<'src> Iterator for Tokenizer<'src> {
-    type Item = EffyResult<Token<'src>>;
+impl<'source> Iterator for Tokenizer<'source> {
+    type Item = EffyResult<Token<'source>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
