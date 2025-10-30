@@ -9,3 +9,8 @@ tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 tracing-error = "0.2.1"
 color-eyre = "0.6.5"
 relative-path = "2.0.1"
+annotate-snippets = "0.12.8"
+
+[dev-dependencies]
+expect-test = "1.5.1"
+strip-ansi-escapes = "0.2.1"

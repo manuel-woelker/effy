@@ -2,9 +2,9 @@ use crate::source_file::SourceFile;
 use std::fmt::{Debug, Formatter};
 
 pub struct SourceLocation<'src> {
-    start: usize,
-    end: usize,
-    source_file: &'src SourceFile,
+    pub start: usize,
+    pub end: usize,
+    pub source_file: &'src SourceFile,
 }
 
 impl<'src> Debug for SourceLocation<'src> {

@@ -7,3 +7,6 @@ edition = "2024"
 effy-base = { version = "0.1.0", path = "../base" }
 
 expect-test = "1.5.1"
+
+[dev-dependencies]
+strip-ansi-escapes = "0.2.1"

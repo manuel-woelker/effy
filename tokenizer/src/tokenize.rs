@@ -1,5 +1,6 @@
 use crate::token::{Token, TokenKind};
 use effy_base::error::EffyResult;
+use effy_base::source_error::make_source_error_result;
 use effy_base::source_file::SourceFile;
 use effy_base::source_location::SourceLocation;
 use std::str::Chars;
@@ -73,10 +74,13 @@ impl<'src> Tokenizer<'src> {
 
     pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token<'src>> {
         self.advance();
-        let location =
-            SourceLocation::new(self.source_file, self.start_position, self.current_position);
+        let location = self.create_location();
         self.start_position = self.current_position;
         Ok(Token::new(token_kind, location))
+    }
+
+    fn create_location(&mut self) -> SourceLocation<'src> {
+        SourceLocation::new(self.source_file, self.start_position, self.current_position)
     }
 
     fn next_token(&mut self) -> Option<EffyResult<Token<'src>>> {
@@ -115,7 +119,17 @@ impl<'src> Tokenizer<'src> {
             '"' => loop {
                 self.advance();
                 match self.current_char {
-                    EOF => return Some(self.create_token(TokenKind::Unexpected)), // TODO: bail on eof?
+                    EOF => {
+                        let mut location = self.create_location();
+                        location.start = location.end;
+                        location.end = location.start + 1;
+                        return Some(make_source_error_result(
+                            self.source_file,
+                            "Unterminated string",
+                            "This string requires a terminating \" character here",
+                            location,
+                        ));
+                    }
                     '"' => {
                         return Some(self.create_token(TokenKind::String));
                     }
@@ -164,13 +178,23 @@ mod tests {
 
     fn input_to_test_string(input: &str) -> String {
         let source_file = SourceFile::new(FilePath::from("test"), input.to_string());
-        let mut tokenizer = tokenize(&source_file);
+        let tokenizer = tokenize(&source_file);
         let mut test_string = String::new();
-        loop {
-            let Some(token) = tokenizer.next() else {
-                break;
+
+        for token in tokenizer {
+            let token = match token {
+                Ok(token) => token,
+                Err(err) => {
+                    writeln!(
+                        test_string,
+                        "⚠ ERROR:\n{}",
+                        strip_ansi_escapes::strip_str(&err.to_string())
+                    )
+                    .unwrap();
+                    return test_string;
+                }
             };
-            let token = token.unwrap();
+
             writeln!(
                 test_string,
                 "🧩 {:3}+{:<2} {:14} {}",
@@ -181,10 +205,10 @@ mod tests {
             )
             .unwrap();
         }
+
         test_string
     }
 
-    #[allow(dead_code)]
     fn test_lexer(input: &str, expected: Expect) {
         let test_string = input_to_test_string(input);
         expected.assert_eq(&test_string);
@@ -326,6 +350,20 @@ mod tests {
             🧩  13+1  Close Parenthesis )
             🧩  14+1  Semicolon      ;
             🧩  15+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        unterminated_string,
+        "\"foo",
+        expect!([r#"
+            ⚠ ERROR:
+            error: Unterminated string
+              ╭▸ test:1:5
+              │
+            1 │ "foo
+              ╰╴    ━ This string requires a terminating " character here
+
         "#])
     );
 }
