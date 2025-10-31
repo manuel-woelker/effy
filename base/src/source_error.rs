@@ -3,7 +3,6 @@ use crate::source_file::SourceFile;
 use crate::source_location::SourceLocation;
 use crate::source_message::{SourceLabel, SourceMessage};
 use crate::source_snippet::SourceSnippet;
-use crate::source_span::SourceSpan;
 
 #[derive(Debug)]
 pub struct SourceError {
@@ -53,9 +52,6 @@ pub fn make_source_error(
         0,
     );
     let mut source_message = SourceMessage::error(primary_message, source_snippet);
-    source_message.add_label(SourceLabel::new(
-        SourceSpan::new(source_location.start, source_location.end),
-        annotation_message,
-    ));
+    source_message.add_label(SourceLabel::new(source_location.span, annotation_message));
     SourceError::new(source_message)
 }

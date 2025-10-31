@@ -9,7 +9,6 @@ use effy_base::source_file::SourceFile;
 use effy_base::source_location::SourceLocation;
 use effy_base::source_message::{SourceLabel, SourceMessage};
 use effy_base::source_snippet::SourceSnippet;
-use effy_base::source_span::SourceSpan;
 use effy_base::test_print::TestPrint;
 use effy_base::value::Value;
 use effy_tokenizer::token::{Token, TokenKind};
@@ -122,7 +121,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     }
 
     fn advance(&mut self) -> EffyResult<Token<'source>> {
-        self.last_position = self.current_token.location().end;
+        self.last_position = self.current_token.location().end();
         let mut token = self
             .tokens
             .next()
@@ -166,10 +165,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         );
         let mut source_message = SourceMessage::error(error_message, source_snippet);
         source_message.add_label(SourceLabel::new(
-            SourceSpan::new(
-                self.current_token.location().start,
-                self.current_token.location().end,
-            ),
+            self.current_token.location().span.clone(),
             token_label,
         ));
         SourceError::new(source_message).into()
@@ -180,7 +176,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     }
 
     fn current_position(&mut self) -> usize {
-        self.current_token.location().start
+        self.current_token.location().start()
     }
 
     fn create_node<T: TestPrint>(
@@ -190,7 +186,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     ) -> EffyResult<AstNode<'source, T>> {
         Ok(AstNode::new(
             node,
-            SourceLocation::new(self.source, start_position, self.last_position),
+            SourceLocation::new(self.source, start_position..self.last_position),
         ))
     }
 }

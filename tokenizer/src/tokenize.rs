@@ -80,7 +80,7 @@ impl<'source> Tokenizer<'source> {
     }
 
     fn create_location(&mut self) -> SourceLocation<'source> {
-        SourceLocation::new(self.source_file, self.start_position, self.current_position)
+        SourceLocation::new(self.source_file, self.start_position..self.current_position)
     }
 
     fn next_token(&mut self) -> Option<EffyResult<Token<'source>>> {
@@ -120,9 +120,10 @@ impl<'source> Tokenizer<'source> {
                 self.advance();
                 match self.current_char {
                     EOF => {
-                        let mut location = self.create_location();
-                        location.start = location.end;
-                        location.end = location.start + 1;
+                        let location = SourceLocation::new(
+                            self.source_file,
+                            self.current_position..self.current_position + 1,
+                        );
                         return Some(make_source_error_result(
                             self.source_file,
                             "Unterminated string",

@@ -107,7 +107,7 @@ mod tests {
         let source_snippet = SourceSnippet::new("hello_world.effy", "fun foo {}", 19, 4);
         let mut source_message = SourceMessage::error("test message".to_string(), source_snippet);
         source_message.add_label(SourceLabel::new(
-            SourceSpan::new(4, 7),
+            SourceSpan::new(4..7),
             "test label".to_string(),
         ));
 

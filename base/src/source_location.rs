@@ -1,9 +1,9 @@
 use crate::source_file::SourceFile;
+use crate::source_span::SourceSpan;
 use std::fmt::{Debug, Formatter};
 
 pub struct SourceLocation<'source> {
-    pub start: usize,
-    pub end: usize,
+    pub span: SourceSpan,
     pub source_file: &'source SourceFile,
 }
 
@@ -13,27 +13,26 @@ impl<'source> Debug for SourceLocation<'source> {
             f,
             "{}>{}+{}",
             self.source_file.path(),
-            self.start,
-            self.end - self.start
+            self.span.range.start,
+            self.span.len(),
         )
     }
 }
 
 impl<'source> SourceLocation<'source> {
-    pub fn new(source_file: &'source SourceFile, start: usize, end: usize) -> Self {
+    pub fn new(source_file: &'source SourceFile, source_span: impl Into<SourceSpan>) -> Self {
         Self {
             source_file,
-            start,
-            end,
+            span: source_span.into(),
         }
     }
 
     pub fn start(&self) -> usize {
-        self.start
+        self.span.start()
     }
 
     pub fn end(&self) -> usize {
-        self.end
+        self.span.end()
     }
 
     pub fn source_file(&self) -> &'source SourceFile {

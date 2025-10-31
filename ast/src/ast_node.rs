@@ -24,8 +24,8 @@ impl<T: TestPrint> TestPrint for AstNode<'_, T> {
         write!(
             write,
             "🌲 {:3}+{:<3}",
-            self.source_location.start,
-            self.source_location.end - self.source_location.start
+            self.source_location.start(),
+            self.source_location.span.len()
         )?;
         indent::indent(write, indent)?;
         self.data.test_print(write, indent)
