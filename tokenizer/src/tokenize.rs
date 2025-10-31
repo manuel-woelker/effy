@@ -136,6 +136,18 @@ impl<'source> Tokenizer<'source> {
                     _ => {}
                 }
             },
+            // Integers
+            '0'..='9' => {
+                loop {
+                    self.advance();
+                    match self.next_char {
+                        '0'..='9' => {}
+                        _ => break,
+                    }
+                }
+                return Some(self.create_token(TokenKind::Integer));
+            }
+
             // Identifiers and keywords
             'a'..='z' | 'A'..='Z' | '_' => {
                 loop {
@@ -171,8 +183,8 @@ impl<'source> Iterator for Tokenizer<'source> {
 #[cfg(test)]
 mod tests {
     use crate::tokenize::tokenize;
-    use effy_base::FilePath;
     use effy_base::source_file::SourceFile;
+    use effy_base::{FilePath, unansi};
     use expect_test::{Expect, expect};
     use std::fmt::Write;
 
@@ -185,12 +197,7 @@ mod tests {
             let token = match token {
                 Ok(token) => token,
                 Err(err) => {
-                    writeln!(
-                        test_string,
-                        "⚠ ERROR:\n{}",
-                        strip_ansi_escapes::strip_str(&err.to_string())
-                    )
-                    .unwrap();
+                    writeln!(test_string, "⚠ ERROR:\n{}", unansi(&err.to_string())).unwrap();
                     return test_string;
                 }
             };
@@ -270,6 +277,34 @@ mod tests {
             🧩   0+1  Open Parenthesis (
             🧩   1+1  Close Parenthesis )
             🧩   2+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        integer_0,
+        "0",
+        expect!([r#"
+            🧩   0+1  Integer        0
+            🧩   1+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        integer_19,
+        "19;",
+        expect!([r#"
+            🧩   0+2  Integer        19
+            🧩   2+1  Semicolon      ;
+            🧩   3+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        integer_12345667890,
+        "1234567890",
+        expect!([r#"
+            🧩   0+10 Integer        1234567890
+            🧩  10+0  End of File    
         "#])
     );
 
@@ -363,7 +398,6 @@ mod tests {
               │
             1 │ "foo
               ╰╴    ━ This string requires a terminating " character here
-
         "#])
     );
 }

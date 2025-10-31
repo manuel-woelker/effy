@@ -3,6 +3,7 @@ use crate::expression::ExpressionNode;
 use effy_base::error::EffyResult;
 use effy_base::test_print::TestPrint;
 use std::fmt::Write;
+use std::ops::Deref;
 
 pub enum Statement<'source> {
     Expression(ExpressionStatement<'source>),
@@ -18,9 +19,10 @@ impl TestPrint for Statement<'_> {
     fn test_print(&self, write: &mut dyn Write, indent: usize) -> EffyResult<()> {
         write!(write, "stmt ")?;
         match self {
-            Statement::Expression(expression) => {
-                expression.expression.test_print(write, indent + 1)?
-            }
+            Statement::Expression(expression) => expression
+                .expression
+                .deref()
+                .test_print(write, indent + 1)?,
         }
         Ok(())
     }

@@ -16,6 +16,7 @@ pub enum TokenKind {
     Colon,
     Dot,
     String,
+    Integer,
     Unexpected,
     EndOfFile,
 }
@@ -36,6 +37,7 @@ impl TokenKind {
             TokenKind::Colon => "Colon",
             TokenKind::Dot => "Dot",
             TokenKind::String => "String",
+            TokenKind::Integer => "Integer",
             TokenKind::Unexpected => "Unexpected",
             TokenKind::EndOfFile => "End of File",
         }
@@ -68,5 +70,11 @@ impl<'source> Token<'source> {
 
     pub fn lexeme(&self) -> &'source str {
         &self.location.source_file().content()[self.location.start()..self.location.end()]
+    }
+}
+
+impl Display for Token<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "“{}” ({})", self.lexeme(), self.kind)
     }
 }

@@ -14,6 +14,23 @@ pub enum Expression<'source> {
 
 pub type ExpressionNode<'source> = AstNode<'source, Expression<'source>>;
 
+impl<'source> Expression<'source> {
+    pub fn call(callee: ExpressionNode<'source>, arguments: Vec<ExpressionNode<'source>>) -> Self {
+        Self::Call(CallExpression {
+            callee: Box::new(callee),
+            arguments,
+        })
+    }
+
+    pub fn var_use(name: IdentifierNode<'source>) -> Self {
+        Self::VarUse(VarUseExpression { name })
+    }
+
+    pub fn literal(value: Value) -> Self {
+        Self::Literal(LiteralExpression { value })
+    }
+}
+
 pub struct CallExpression<'source> {
     callee: Box<ExpressionNode<'source>>,
     arguments: Vec<ExpressionNode<'source>>,
