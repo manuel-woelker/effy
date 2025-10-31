@@ -6,23 +6,23 @@ use effy_base::value::Value;
 use std::fmt::Write;
 use std::ops::Deref;
 
-pub enum Expression<'source> {
-    Call(CallExpression<'source>),
-    VarUse(VarUseExpression<'source>),
+pub enum Expression {
+    Call(CallExpression),
+    VarUse(VarUseExpression),
     Literal(LiteralExpression),
 }
 
-pub type ExpressionNode<'source> = AstNode<'source, Expression<'source>>;
+pub type ExpressionNode = AstNode<Expression>;
 
-impl<'source> Expression<'source> {
-    pub fn call(callee: ExpressionNode<'source>, arguments: Vec<ExpressionNode<'source>>) -> Self {
+impl Expression {
+    pub fn call(callee: ExpressionNode, arguments: Vec<ExpressionNode>) -> Self {
         Self::Call(CallExpression {
             callee: Box::new(callee),
             arguments,
         })
     }
 
-    pub fn var_use(name: IdentifierNode<'source>) -> Self {
+    pub fn var_use(name: IdentifierNode) -> Self {
         Self::VarUse(VarUseExpression { name })
     }
 
@@ -31,26 +31,26 @@ impl<'source> Expression<'source> {
     }
 }
 
-pub struct CallExpression<'source> {
-    callee: Box<ExpressionNode<'source>>,
-    arguments: Vec<ExpressionNode<'source>>,
+pub struct CallExpression {
+    callee: Box<ExpressionNode>,
+    arguments: Vec<ExpressionNode>,
 }
 
-impl CallExpression<'_> {
-    pub fn callee(&self) -> &ExpressionNode<'_> {
+impl CallExpression {
+    pub fn callee(&self) -> &ExpressionNode {
         &self.callee
     }
-    pub fn arguments(&self) -> &[ExpressionNode<'_>] {
+    pub fn arguments(&self) -> &[ExpressionNode] {
         &self.arguments
     }
 }
 
-pub struct VarUseExpression<'source> {
-    name: IdentifierNode<'source>,
+pub struct VarUseExpression {
+    name: IdentifierNode,
 }
 
-impl VarUseExpression<'_> {
-    pub fn name(&self) -> &IdentifierNode<'_> {
+impl VarUseExpression {
+    pub fn name(&self) -> &IdentifierNode {
         &self.name
     }
 }
@@ -65,7 +65,7 @@ impl LiteralExpression {
     }
 }
 
-impl TestPrint for Expression<'_> {
+impl TestPrint for Expression {
     fn test_print(&self, write: &mut dyn Write, indent: usize) -> EffyResult<()> {
         match self {
             Expression::Call(call) => {

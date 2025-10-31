@@ -6,7 +6,6 @@ use effy_ast::statement::{ExpressionStatement, Statement, StatementNode};
 use effy_base::error::{EffyError, EffyResult, bail, err};
 use effy_base::source_error::SourceError;
 use effy_base::source_file::SourceFile;
-use effy_base::source_location::SourceLocation;
 use effy_base::source_message::{SourceLabel, SourceMessage};
 use effy_base::source_snippet::SourceSnippet;
 use effy_base::test_print::TestPrint;
@@ -14,7 +13,7 @@ use effy_base::value::Value;
 use effy_tokenizer::token::{Token, TokenKind};
 use effy_tokenizer::tokenize::tokenize;
 
-pub fn parse_script(script_source: &SourceFile) -> EffyResult<ScriptNode<'_>> {
+pub fn parse_script(script_source: &SourceFile) -> EffyResult<ScriptNode> {
     let mut tokens = tokenize(script_source);
     let mut parser = Parser::new(script_source, &mut tokens)?;
     parser.parse_script()
@@ -44,7 +43,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         })
     }
 
-    fn parse_script(&mut self) -> EffyResult<ScriptNode<'source>> {
+    fn parse_script(&mut self) -> EffyResult<ScriptNode> {
         let mut statements = Vec::new();
         let start_position = self.last_position;
         while self.current_token.kind() != TokenKind::EndOfFile {
@@ -53,13 +52,13 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         self.create_node(start_position, Script::new(statements))
     }
 
-    fn parse_statement(&mut self) -> EffyResult<StatementNode<'source>> {
+    fn parse_statement(&mut self) -> EffyResult<StatementNode> {
         let result = self.parse_expression_statement()?;
         self.consume(TokenKind::Semicolon)?;
         Ok(result)
     }
 
-    fn parse_expression_statement(&mut self) -> EffyResult<StatementNode<'source>> {
+    fn parse_expression_statement(&mut self) -> EffyResult<StatementNode> {
         let start_position = self.current_position();
         let expression = self.parse_expression()?;
         self.create_node(
@@ -68,12 +67,12 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         )
     }
 
-    fn parse_expression(&mut self) -> EffyResult<ExpressionNode<'source>> {
+    fn parse_expression(&mut self) -> EffyResult<ExpressionNode> {
         let expression = self.parse_call()?;
         Ok(expression)
     }
 
-    fn parse_call(&mut self) -> EffyResult<ExpressionNode<'source>> {
+    fn parse_call(&mut self) -> EffyResult<ExpressionNode> {
         let start_position = self.current_position();
         let expr = self.parse_primary_expression()?;
         if !self.is_at(TokenKind::ParenOpen) {
@@ -85,7 +84,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         self.create_node(start_position, Expression::call(expr, vec![argument]))
     }
 
-    fn parse_primary_expression(&mut self) -> EffyResult<ExpressionNode<'source>> {
+    fn parse_primary_expression(&mut self) -> EffyResult<ExpressionNode> {
         let start_position = self.current_position();
         let result = match self.current_token.kind() {
             TokenKind::Identifier => {
@@ -122,7 +121,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         token.lexeme(self.source.content())
     }
 
-    fn parse_identifier(&mut self) -> EffyResult<IdentifierNode<'source>> {
+    fn parse_identifier(&mut self) -> EffyResult<IdentifierNode> {
         let start_position = self.current_position();
         let name = self.consume(TokenKind::Identifier)?;
         self.create_node(start_position, Identifier::new(self.lexeme(&name)))
@@ -191,11 +190,8 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         &mut self,
         start_position: usize,
         node: T,
-    ) -> EffyResult<AstNode<'source, T>> {
-        Ok(AstNode::new(
-            node,
-            SourceLocation::new(self.source, start_position..self.last_position),
-        ))
+    ) -> EffyResult<AstNode<T>> {
+        Ok(AstNode::new(node, start_position..self.last_position))
     }
 }
 

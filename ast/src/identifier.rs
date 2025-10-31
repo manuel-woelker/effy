@@ -17,7 +17,7 @@ impl Identifier {
     }
 }
 
-pub type IdentifierNode<'source> = AstNode<'source, Identifier>;
+pub type IdentifierNode = AstNode<Identifier>;
 
 impl TestPrint for Identifier {
     fn test_print(&self, write: &mut dyn Write, _indent: usize) -> EffyResult<()> {

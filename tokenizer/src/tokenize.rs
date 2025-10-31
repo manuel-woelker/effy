@@ -2,7 +2,6 @@ use crate::token::{Token, TokenKind};
 use effy_base::error::EffyResult;
 use effy_base::source_error::make_source_error_result;
 use effy_base::source_file::SourceFile;
-use effy_base::source_location::SourceLocation;
 use effy_base::source_span::SourceSpan;
 use std::str::Chars;
 
@@ -121,15 +120,11 @@ impl<'source> Tokenizer<'source> {
                 self.advance();
                 match self.current_char {
                     EOF => {
-                        let location = SourceLocation::new(
-                            self.source_file,
-                            self.current_position..self.current_position + 1,
-                        );
                         return Some(make_source_error_result(
                             self.source_file,
                             "Unterminated string",
                             "This string requires a terminating \" character here",
-                            location,
+                            self.current_position..self.current_position + 1,
                         ));
                     }
                     '"' => {

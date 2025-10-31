@@ -5,17 +5,17 @@ use effy_base::test_print::TestPrint;
 use std::fmt::Write;
 use std::ops::Deref;
 
-pub enum Statement<'source> {
-    Expression(ExpressionStatement<'source>),
+pub enum Statement {
+    Expression(ExpressionStatement),
 }
 
-pub type StatementNode<'source> = AstNode<'source, Statement<'source>>;
+pub type StatementNode = AstNode<Statement>;
 
-pub struct ExpressionStatement<'source> {
-    pub expression: ExpressionNode<'source>,
+pub struct ExpressionStatement {
+    pub expression: ExpressionNode,
 }
 
-impl TestPrint for Statement<'_> {
+impl TestPrint for Statement {
     fn test_print(&self, write: &mut dyn Write, indent: usize) -> EffyResult<()> {
         write!(write, "stmt ")?;
         match self {

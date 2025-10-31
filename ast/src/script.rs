@@ -4,20 +4,20 @@ use effy_base::error::EffyResult;
 use effy_base::test_print::TestPrint;
 use std::fmt::Write;
 
-pub struct Script<'source> {
+pub struct Script {
     #[allow(dead_code)]
-    statements: Vec<StatementNode<'source>>,
+    statements: Vec<StatementNode>,
 }
 
-impl<'source> Script<'source> {
-    pub fn new(statements: Vec<StatementNode<'source>>) -> Self {
+impl Script {
+    pub fn new(statements: Vec<StatementNode>) -> Self {
         Self { statements }
     }
 }
 
-pub type ScriptNode<'source> = AstNode<'source, Script<'source>>;
+pub type ScriptNode = AstNode<Script>;
 
-impl TestPrint for Script<'_> {
+impl TestPrint for Script {
     fn test_print(&self, write: &mut dyn Write, indent: usize) -> EffyResult<()> {
         self.indent(write, indent)?;
         writeln!(write, "Script")?;
