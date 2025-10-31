@@ -1,4 +1,5 @@
-use effy_base::source_location::SourceLocation;
+use effy_base::SourceString;
+use effy_base::source_span::SourceSpan;
 use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -50,31 +51,34 @@ impl Display for TokenKind {
     }
 }
 
-pub struct Token<'source> {
+pub struct Token {
     kind: TokenKind,
-    location: SourceLocation<'source>,
+    span: SourceSpan,
 }
 
-impl<'source> Token<'source> {
-    pub fn new(kind: TokenKind, location: SourceLocation<'source>) -> Self {
-        Self { kind, location }
+impl Token {
+    pub fn new(kind: TokenKind, span: impl Into<SourceSpan>) -> Self {
+        Self {
+            kind,
+            span: span.into(),
+        }
     }
 
     pub fn kind(&self) -> TokenKind {
         self.kind
     }
 
-    pub fn location(&self) -> &SourceLocation<'source> {
-        &self.location
+    pub fn span(&self) -> &SourceSpan {
+        &self.span
     }
 
-    pub fn lexeme(&self) -> &'source str {
-        &self.location.source_file().content()[self.location.start()..self.location.end()]
+    pub fn lexeme<'source>(&self, source: &'source SourceString) -> &'source str {
+        &source[self.span.range.clone()]
     }
 }
 
-impl Display for Token<'_> {
+impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "“{}” ({})", self.lexeme(), self.kind)
+        write!(f, "{}", self.kind)
     }
 }

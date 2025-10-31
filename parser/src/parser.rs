@@ -23,15 +23,15 @@ pub fn parse_script(script_source: &SourceFile) -> EffyResult<ScriptNode<'_>> {
 #[allow(dead_code)]
 struct Parser<'source, 'tokens> {
     source: &'source SourceFile,
-    current_token: Token<'source>,
+    current_token: Token,
     last_position: usize,
-    tokens: &'tokens mut dyn Iterator<Item = EffyResult<Token<'source>>>,
+    tokens: &'tokens mut dyn Iterator<Item = EffyResult<Token>>,
 }
 
 impl<'source, 'tokens> Parser<'source, 'tokens> {
     fn new(
         source: &'source SourceFile,
-        tokens: &'tokens mut dyn Iterator<Item = EffyResult<Token<'source>>>,
+        tokens: &'tokens mut dyn Iterator<Item = EffyResult<Token>>,
     ) -> EffyResult<Self> {
         let current_token = tokens
             .next()
@@ -96,32 +96,40 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
                 let token = self.consume(TokenKind::String)?;
                 self.create_node(
                     start_position,
-                    Expression::literal(extract_string_from_lexeme(token.lexeme())?),
+                    Expression::literal(extract_string_from_lexeme(self.lexeme(&token))?),
                 )
             }
             TokenKind::Integer => {
                 let token = self.consume(TokenKind::Integer)?;
                 self.create_node(
                     start_position,
-                    Expression::literal(Value::Int(token.lexeme().parse::<i64>()?)),
+                    Expression::literal(Value::Int(self.lexeme(&token).parse::<i64>()?)),
                 )
             }
             _other => self.create_token_error(
-                format!("Unexpected token: {}", self.current_token),
+                format!(
+                    "Unexpected token: “{}” ({})",
+                    self.lexeme(&self.current_token),
+                    self.current_token
+                ),
                 "expected primary expression here".to_string(),
             ),
         }?;
         Ok(result)
     }
 
+    fn lexeme(&self, token: &Token) -> &str {
+        token.lexeme(self.source.content())
+    }
+
     fn parse_identifier(&mut self) -> EffyResult<IdentifierNode<'source>> {
         let start_position = self.current_position();
         let name = self.consume(TokenKind::Identifier)?;
-        self.create_node(start_position, Identifier::new(name.lexeme().to_string()))
+        self.create_node(start_position, Identifier::new(self.lexeme(&name)))
     }
 
-    fn advance(&mut self) -> EffyResult<Token<'source>> {
-        self.last_position = self.current_token.location().end();
+    fn advance(&mut self) -> EffyResult<Token> {
+        self.last_position = self.current_token.span().end();
         let mut token = self
             .tokens
             .next()
@@ -130,7 +138,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         Ok(token)
     }
 
-    fn consume(&mut self, token_kind: TokenKind) -> EffyResult<Token<'source>> {
+    fn consume(&mut self, token_kind: TokenKind) -> EffyResult<Token> {
         if self.current_token.kind() != token_kind {
             return self.create_token_error(
                 format!(
@@ -165,7 +173,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         );
         let mut source_message = SourceMessage::error(error_message, source_snippet);
         source_message.add_label(SourceLabel::new(
-            self.current_token.location().span.clone(),
+            self.current_token.span().clone(),
             token_label,
         ));
         SourceError::new(source_message).into()
@@ -176,7 +184,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     }
 
     fn current_position(&mut self) -> usize {
-        self.current_token.location().start()
+        self.current_token.span().start()
     }
 
     fn create_node<T: TestPrint>(

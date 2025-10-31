@@ -3,6 +3,7 @@ use effy_base::error::EffyResult;
 use effy_base::source_error::make_source_error_result;
 use effy_base::source_file::SourceFile;
 use effy_base::source_location::SourceLocation;
+use effy_base::source_span::SourceSpan;
 use std::str::Chars;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -15,7 +16,7 @@ enum TokenizerState {
 
 const EOF: char = '␄';
 
-pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = EffyResult<Token<'_>>> {
+pub fn tokenize(source_file: &'_ SourceFile) -> impl Iterator<Item = EffyResult<Token>> {
     let mut tokenizer = Tokenizer {
         source_file,
         start_position: 0,
@@ -72,18 +73,18 @@ impl<'source> Tokenizer<'source> {
         }
     }
 
-    pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token<'source>> {
+    pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token> {
         self.advance();
-        let location = self.create_location();
+        let location = self.create_span();
         self.start_position = self.current_position;
         Ok(Token::new(token_kind, location))
     }
 
-    fn create_location(&mut self) -> SourceLocation<'source> {
-        SourceLocation::new(self.source_file, self.start_position..self.current_position)
+    fn create_span(&mut self) -> SourceSpan {
+        SourceSpan::new(self.start_position..self.current_position)
     }
 
-    fn next_token(&mut self) -> Option<EffyResult<Token<'source>>> {
+    fn next_token(&mut self) -> Option<EffyResult<Token>> {
         loop {
             if !self.current_char.is_whitespace() {
                 break;
@@ -174,7 +175,7 @@ impl<'source> Tokenizer<'source> {
 }
 
 impl<'source> Iterator for Tokenizer<'source> {
-    type Item = EffyResult<Token<'source>>;
+    type Item = EffyResult<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
@@ -206,10 +207,10 @@ mod tests {
             writeln!(
                 test_string,
                 "🧩 {:3}+{:<2} {:14} {}",
-                token.location().start(),
-                token.location().end() - token.location().start(),
+                token.span().start(),
+                token.span().end() - token.span().start(),
                 token.kind(),
-                token.lexeme(),
+                token.lexeme(source_file.content()),
             )
             .unwrap();
         }

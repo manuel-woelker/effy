@@ -8,8 +8,8 @@ pub struct Identifier {
 }
 
 impl Identifier {
-    pub fn new(name: String) -> Self {
-        Self { name }
+    pub fn new(name: impl Into<String>) -> Self {
+        Self { name: name.into() }
     }
 
     pub fn name(&self) -> &str {
