@@ -73,10 +73,14 @@ impl<'source> Tokenizer<'source> {
     }
 
     pub fn create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token> {
-        self.advance();
         let location = self.create_span();
         self.start_position = self.current_position;
         Ok(Token::new(token_kind, location))
+    }
+
+    pub fn advance_and_create_token(&mut self, token_kind: TokenKind) -> EffyResult<Token> {
+        self.advance();
+        self.create_token(token_kind)
     }
 
     fn create_span(&mut self) -> SourceSpan {
@@ -105,17 +109,17 @@ impl<'source> Tokenizer<'source> {
         }
         Some(match self.current_char {
             // Symbols
-            '(' => self.create_token(TokenKind::ParenOpen),
-            ')' => self.create_token(TokenKind::ParenClose),
-            '{' => self.create_token(TokenKind::BraceOpen),
-            '}' => self.create_token(TokenKind::BraceClose),
-            '[' => self.create_token(TokenKind::BracketOpen),
-            ']' => self.create_token(TokenKind::BracketClose),
-            ',' => self.create_token(TokenKind::Comma),
-            ';' => self.create_token(TokenKind::Semicolon),
-            ':' => self.create_token(TokenKind::Colon),
-            '.' => self.create_token(TokenKind::Dot),
-            '@' => self.create_token(TokenKind::At),
+            '(' => self.advance_and_create_token(TokenKind::ParenOpen),
+            ')' => self.advance_and_create_token(TokenKind::ParenClose),
+            '{' => self.advance_and_create_token(TokenKind::BraceOpen),
+            '}' => self.advance_and_create_token(TokenKind::BraceClose),
+            '[' => self.advance_and_create_token(TokenKind::BracketOpen),
+            ']' => self.advance_and_create_token(TokenKind::BracketClose),
+            ',' => self.advance_and_create_token(TokenKind::Comma),
+            ';' => self.advance_and_create_token(TokenKind::Semicolon),
+            ':' => self.advance_and_create_token(TokenKind::Colon),
+            '.' => self.advance_and_create_token(TokenKind::Dot),
+            '@' => self.advance_and_create_token(TokenKind::At),
             // Strings
             '"' => loop {
                 self.advance();
@@ -129,6 +133,7 @@ impl<'source> Tokenizer<'source> {
                         ));
                     }
                     '"' => {
+                        self.advance();
                         return Some(self.create_token(TokenKind::String));
                     }
                     _ => {}
@@ -138,7 +143,7 @@ impl<'source> Tokenizer<'source> {
             '0'..='9' => {
                 loop {
                     self.advance();
-                    match self.next_char {
+                    match self.current_char {
                         '0'..='9' => {}
                         _ => break,
                     }
@@ -150,12 +155,12 @@ impl<'source> Tokenizer<'source> {
             'a'..='z' | 'A'..='Z' | '_' => {
                 loop {
                     self.advance();
-                    if !(self.next_char.is_alphanumeric() || self.next_char == '_') {
+                    if !(self.current_char.is_alphanumeric() || self.current_char == '_') {
                         break;
                     }
                 }
-                let identifier = &self.source_file.content()
-                    [self.start_position..self.current_position + self.current_char.len_utf8()];
+                let identifier =
+                    &self.source_file.content()[self.start_position..self.current_position];
                 let token_kind = match identifier {
                     "fun" => TokenKind::Fun,
                     _ => TokenKind::Identifier,
