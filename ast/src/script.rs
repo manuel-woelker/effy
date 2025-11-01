@@ -5,8 +5,7 @@ use effy_base::test_print::TestPrint;
 use std::fmt::Write;
 
 pub struct Script {
-    #[allow(dead_code)]
-    statements: Vec<StatementNode>,
+    pub statements: Vec<StatementNode>,
 }
 
 impl Script {

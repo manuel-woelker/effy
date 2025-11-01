@@ -1,0 +1,12 @@
+[package]
+name = "effy-interpreter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+effy-base = { version = "0.1.0", path = "../base" }
+effy-parser = { version = "0.1.0", path = "../parser" }
+effy-ast = { version = "0.1.0", path = "../ast" }
+
+[dev-dependencies]
+expect-test = "1.5.1"

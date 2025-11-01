@@ -208,7 +208,7 @@ mod tests {
                 test_string,
                 "🧩 {:3}+{:<2} {:14} {}",
                 token.span().start(),
-                token.span().end() - token.span().start(),
+                token.span().len(),
                 token.kind(),
                 token.lexeme(source_file.content()),
             )

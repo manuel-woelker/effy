@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["ast","base","cli", "parser", "tokenizer"]
+members = ["ast","base","cli", "interpreter", "parser", "tokenizer"]
 
 [workspace.dependencies]
 

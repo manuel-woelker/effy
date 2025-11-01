@@ -137,6 +137,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "effy-interpreter"
+version = "0.1.0"
+dependencies = [
+ "effy-ast",
+ "effy-base",
+ "effy-parser",
+ "expect-test",
+]
+
+[[package]]
 name = "effy-parser"
 version = "0.1.0"
 dependencies = [
