@@ -2,7 +2,6 @@ use crate::value::InterpreterValue;
 use effy_base::error::{EffyResult, err};
 use std::collections::HashMap;
 
-#[derive(Default)]
 pub struct Environment {
     pub bindings: HashMap<String, InterpreterValue>,
 }

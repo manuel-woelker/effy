@@ -23,7 +23,16 @@ impl NativeFunction {
     }
 }
 
-pub struct NativeFunctionContext {}
+pub struct NativeFunctionContext {
+    pub arguments: Vec<InterpreterValue>,
+}
+
+impl NativeFunctionContext {
+    pub fn arguments(&self) -> &[InterpreterValue] {
+        &self.arguments[..]
+    }
+}
+
 pub trait NativeFunctionTrait: Send + Sync + 'static {
     fn invoke(&self, context: &mut NativeFunctionContext) -> EffyResult<InterpreterValue>;
 }

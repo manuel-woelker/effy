@@ -10,7 +10,6 @@ use effy_base::error::{EffyResult, bail};
 use effy_base::source_file::SourceFile;
 use effy_parser::parser::parse_script;
 
-#[derive(Default)]
 pub struct Interpreter {
     environment: Environment,
 }
@@ -76,10 +75,15 @@ impl Interpreter {
     }
 
     pub fn eval_call(&mut self, call: &CallExpression) -> EffyResult<InterpreterValue> {
+        let arguments = call
+            .arguments()
+            .iter()
+            .map(|arg| self.eval_expression(arg))
+            .collect::<EffyResult<Vec<InterpreterValue>>>()?;
         let callee = self.eval_expression(call.callee())?;
         match callee.value_kind() {
             ValueKind::NativeFunction(native_function) => {
-                native_function.invoke(&mut NativeFunctionContext {})
+                native_function.invoke(&mut NativeFunctionContext { arguments })
             }
             _ => {
                 bail!("Expression value is not callable: {}", callee);
@@ -96,24 +100,24 @@ impl Interpreter {
 #[cfg(test)]
 mod test {
     use crate::interpreter::Interpreter;
+    use crate::shared_string_buffer::SharedStringBuffer;
     use crate::value::InterpreterValue;
     use effy_base::error::EffyResult;
     use effy_base::source_file::SourceFile;
     use expect_test::{Expect, expect};
-    use std::sync::{Arc, RwLock};
 
     fn test_eval(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
         let mut interpreter = Interpreter::new();
-        let result_string = Arc::new(RwLock::new(String::new()));
-        let result_string_clone = result_string.clone();
-        interpreter.add_native_function_fn("println", move |_context| {
-            println!("PRINTLN");
-            result_string_clone.write().unwrap().push_str("PRINTLN\n");
+        let result_string_buffer = SharedStringBuffer::new();
+        let result_string_clone = result_string_buffer.clone();
+        interpreter.add_native_function_fn("println", move |context| {
+            write!(result_string_clone, "PRINTLN {}\n", context.arguments()[0]);
             Ok(InterpreterValue::unit())
         });
         let result = interpreter.run_script(source_file)?;
-        let mut result_string = result_string.read().unwrap().clone();
+        let mut result_string = result_string_buffer.to_string();
+        result_string.push_str("RESULT: ");
         result_string.push_str(&result.to_string());
         expected.assert_eq(&result_string);
         Ok(())
@@ -128,25 +132,25 @@ mod test {
         };
     }
 
-    test_eval!(empty, "", expect!["unit"]);
+    test_eval!(empty, "", expect!["RESULT: unit"]);
 
-    test_eval!(integer, "42;", expect!["42i64"]);
+    test_eval!(integer, "42;", expect!["RESULT: 42i64"]);
 
-    test_eval!(string_empty, "\"\";", expect![[r#""""#]]);
+    test_eval!(string_empty, "\"\";", expect![[r#"RESULT: """#]]);
 
-    test_eval!(string_simple, "\"foo\";", expect![[r#""foo""#]]);
+    test_eval!(string_simple, "\"foo\";", expect![[r#"RESULT: "foo""#]]);
 
     test_eval!(
         var_use_println,
         "println;",
-        expect!["<native function 'println'>"]
+        expect!["RESULT: <native function 'println'>"]
     );
 
     test_eval!(
         call_println,
         "println(\"hello world\");",
         expect![[r#"
-            PRINTLN
-            unit"#]]
+            PRINTLN "hello world"
+            RESULT: unit"#]]
     );
 }
