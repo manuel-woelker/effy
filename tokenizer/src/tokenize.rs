@@ -161,9 +161,14 @@ impl<'source> Tokenizer<'source> {
                 };
                 self.create_token(token_kind)
             }
-            _other => {
+            unexpected => {
                 self.state = TokenizerState::EndOfFile;
-                self.create_token(TokenKind::Unexpected)
+                return Some(make_source_error_result(
+                    self.source_file,
+                    format!("Unexpected character '{unexpected}'"),
+                    "This character is not expected here",
+                    self.current_position..self.current_position + unexpected.len_utf8(),
+                ));
             }
         })
     }
@@ -186,7 +191,7 @@ mod tests {
     use std::fmt::Write;
 
     fn input_to_test_string(input: &str) -> String {
-        let source_file = SourceFile::new(FilePath::from("test"), input.to_string());
+        let source_file = SourceFile::new(FilePath::from("test.effy"), input.to_string());
         let tokenizer = tokenize(&source_file);
         let mut test_string = String::new();
 
@@ -391,10 +396,23 @@ mod tests {
         expect!([r#"
             ⚠ ERROR:
             error: Unterminated string
-              ╭▸ test:1:5
+              ╭▸ test.effy:1:5
               │
             1 │ "foo
               ╰╴    ━ This string requires a terminating " character here
+        "#])
+    );
+
+    test_lex!(
+        unexpected,
+        "👨‍🚀",
+        expect!([r#"
+            ⚠ ERROR:
+            error: Unexpected character '👨'
+              ╭▸ test.effy:1:1
+              │
+            1 │ 👨🚀
+              ╰╴━━ This character is not expected here
         "#])
     );
 }

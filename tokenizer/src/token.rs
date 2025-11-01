@@ -18,7 +18,6 @@ pub enum TokenKind {
     Dot,
     String,
     Integer,
-    Unexpected,
     EndOfFile,
 }
 
@@ -39,7 +38,6 @@ impl TokenKind {
             TokenKind::Dot => "Dot",
             TokenKind::String => "String",
             TokenKind::Integer => "Integer",
-            TokenKind::Unexpected => "Unexpected",
             TokenKind::EndOfFile => "End of File",
         }
     }
