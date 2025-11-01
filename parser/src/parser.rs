@@ -1,8 +1,11 @@
 use effy_ast::ast_node::AstNode;
 use effy_ast::expression::{Expression, ExpressionNode};
+use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::identifier::{Identifier, IdentifierNode};
 use effy_ast::script::{Script, ScriptNode};
-use effy_ast::statement::{ExpressionStatement, Statement, StatementNode};
+use effy_ast::statement::{
+    ExpressionStatement, FunctionDefinitionStatement, Statement, StatementNode,
+};
 use effy_base::error::{EffyError, EffyResult, bail, err};
 use effy_base::source_error::SourceError;
 use effy_base::source_file::SourceFile;
@@ -53,9 +56,34 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     }
 
     fn parse_statement(&mut self) -> EffyResult<StatementNode> {
+        if let TokenKind::Fun = self.current_token.kind() {
+            return self.parse_function_definition_statement();
+        }
         let result = self.parse_expression_statement()?;
         self.consume(TokenKind::Semicolon)?;
         Ok(result)
+    }
+
+    fn parse_function_definition_statement(&mut self) -> EffyResult<StatementNode> {
+        let start_position = self.current_position();
+        self.consume(TokenKind::Fun)?;
+        let name = self.parse_identifier()?;
+        self.consume(TokenKind::ParenOpen)?;
+        self.consume(TokenKind::ParenClose)?;
+        self.consume(TokenKind::BraceOpen)?;
+        let mut statements = Vec::new();
+        while self.current_token.kind() != TokenKind::BraceClose {
+            statements.push(self.parse_statement()?);
+        }
+        self.consume(TokenKind::BraceClose)?;
+        let function_definition_node =
+            self.create_node(start_position, FunctionDefinition { name, statements })?;
+        self.create_node(
+            start_position,
+            Statement::FunctionDefinition(FunctionDefinitionStatement {
+                function_definition: function_definition_node,
+            }),
+        )
     }
 
     fn parse_expression_statement(&mut self) -> EffyResult<StatementNode> {
@@ -137,6 +165,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         Ok(token)
     }
 
+    #[track_caller]
     fn consume(&mut self, token_kind: TokenKind) -> EffyResult<Token> {
         if self.current_token.kind() != token_kind {
             return self.create_token_error(
@@ -151,6 +180,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         Ok(token)
     }
 
+    #[track_caller]
     fn create_token_error<T>(
         &mut self,
         error_message: String,
@@ -159,6 +189,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         Err(self.create_token_error_internal(error_message, token_label))
     }
 
+    #[track_caller]
     fn create_token_error_internal(
         &mut self,
         error_message: String,
@@ -337,6 +368,30 @@ mod test {
             🌲  19+7      literal "hello"
             🌲  41+14  stmt  call  var use ❮print❯
             🌲  47+7      literal "world"
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_empty,
+        "fun empty() {}",
+        expect![[r#"
+            🌲   0+14 Script
+            🌲   0+14  stmt function definition
+            🌲   0+14   fun empty
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_simple,
+        r#"fun simple() {
+            print("hello");
+        }"#,
+        expect![[r#"
+            🌲   0+52 Script
+            🌲   0+52  stmt function definition
+            🌲   0+52   fun simple
+            🌲  27+14    stmt  call  var use ❮print❯
+            🌲  33+7        literal "hello"
         "#]]
     );
 

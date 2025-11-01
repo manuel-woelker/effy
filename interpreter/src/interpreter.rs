@@ -59,6 +59,9 @@ impl Interpreter {
     pub fn eval_statement(&mut self, statement: &StatementNode) -> EffyResult<InterpreterValue> {
         Ok(match &statement.data {
             Statement::Expression(expression) => self.eval_expression(&expression.expression)?,
+            Statement::FunctionDefinition(_) => {
+                todo!()
+            }
         })
     }
 

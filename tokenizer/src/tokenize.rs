@@ -115,6 +115,7 @@ impl<'source> Tokenizer<'source> {
             ';' => self.create_token(TokenKind::Semicolon),
             ':' => self.create_token(TokenKind::Colon),
             '.' => self.create_token(TokenKind::Dot),
+            '@' => self.create_token(TokenKind::At),
             // Strings
             '"' => loop {
                 self.advance();
@@ -153,8 +154,8 @@ impl<'source> Tokenizer<'source> {
                         break;
                     }
                 }
-                let identifier =
-                    &self.source_file.content()[self.start_position..self.current_position];
+                let identifier = &self.source_file.content()
+                    [self.start_position..self.current_position + self.current_char.len_utf8()];
                 let token_kind = match identifier {
                     "fun" => TokenKind::Fun,
                     _ => TokenKind::Identifier,
@@ -252,6 +253,7 @@ mod tests {
         (semicolon ";" "Semicolon")
         (colon ":" "Colon")
         (dot "." "Dot")
+        (at "@" "At")
         (comma "," "Comma")
     );
 
@@ -350,7 +352,7 @@ mod tests {
         fun,
         "fun ",
         expect!([r#"
-            🧩   0+3  Identifier     fun
+            🧩   0+3  keyword fun    fun
             🧩   4+0  End of File    
         "#])
     );
@@ -368,7 +370,7 @@ mod tests {
         function,
         "fun foo() {}",
         expect!([r#"
-            🧩   0+3  Identifier     fun
+            🧩   0+3  keyword fun    fun
             🧩   4+3  Identifier     foo
             🧩   7+1  Open Parenthesis (
             🧩   8+1  Close Parenthesis )
