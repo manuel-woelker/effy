@@ -21,6 +21,6 @@ impl Environment {
         self.bindings
             .get(name.as_ref())
             .cloned()
-            .ok_or_else(|| err!("Could not resolve binding {}", name.as_ref()))
+            .ok_or_else(|| err!("Could not resolve binding '{}'", name.as_ref()))
     }
 }

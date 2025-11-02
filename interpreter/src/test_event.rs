@@ -1,3 +1,5 @@
+use effy_base::error::EffyError;
+
 #[derive(Debug)]
 pub enum TestEvent {
     TestStarted {
@@ -10,6 +12,7 @@ pub enum TestEvent {
 
     TestFailed {
         test_name: String,
+        error: EffyError,
         // TODO: error diagnostics
     },
 }

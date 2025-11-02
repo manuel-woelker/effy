@@ -93,9 +93,10 @@ impl Interpreter {
                             test_name: test_name.clone(),
                         });
                     }
-                    Err(_err) => {
+                    Err(error) => {
                         callback(TestEvent::TestFailed {
                             test_name: test_name.clone(),
+                            error,
                         });
                     }
                 };
@@ -166,10 +167,11 @@ mod test {
     use crate::interpreter::Interpreter;
     use crate::shared_string_buffer::SharedStringBuffer;
     use crate::test_event::TestEvent;
-    use crate::value::InterpreterValue;
-    use effy_base::error::EffyResult;
+    use crate::value::{InterpreterValue, ValueKind};
+    use effy_base::error::{bail, EffyResult};
     use effy_base::source_file::SourceFile;
     use expect_test::{Expect, expect};
+    use effy_base::value::Value;
 
     fn test_eval(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
@@ -229,6 +231,20 @@ mod test {
             Ok(InterpreterValue::unit())
         });
         let result_string_clone = result_string_buffer.clone();
+        interpreter.add_native_function_fn("assert", move |context| {
+            let first_argument = &context.arguments()[0];
+            write!(result_string_clone, "ASSERT {}\n", first_argument);
+            // check if first_argument is a boolean
+            if let ValueKind::PrimitiveValue(Value::Boolean(value)) = first_argument.value_kind() {
+                if !value {
+                    bail!("assertion failed");
+                }
+                Ok(InterpreterValue::unit())
+            } else {
+                bail!("assert argument must be a boolean, instead found value: '{}'", first_argument);
+            }
+        });
+        let result_string_clone = result_string_buffer.clone();
         interpreter.run_tests(source_file, &mut |event| match event {
             TestEvent::TestStarted { test_name } => {
                 writeln!(result_string_clone, "TEST STARTED: {}", test_name);
@@ -236,8 +252,8 @@ mod test {
             TestEvent::TestSuccess { test_name } => {
                 writeln!(result_string_clone, "TEST SUCCESS: {}", test_name);
             }
-            TestEvent::TestFailed { test_name } => {
-                writeln!(result_string_clone, "TEST FAILED: {}", test_name);
+            TestEvent::TestFailed { test_name, error } => {
+                writeln!(result_string_clone, "TEST FAILED: {}\nERROR: {}", test_name, error);
             }
         })?;
         let result_string = result_string_buffer.to_string();
@@ -271,8 +287,42 @@ mod test {
         test_fail,
         "@Test fun foo() {bar;}",
         expect![[r#"
-        TEST STARTED: foo
-        TEST FAILED: foo
-    "#]]
+            TEST STARTED: foo
+            TEST FAILED: foo
+            ERROR: Could not resolve binding 'bar'
+        "#]]
     );
+
+    run_test!(
+        test_assert_true,
+        "@Test fun foo() {assert(true);}",
+        expect![[r#"
+            TEST STARTED: foo
+            ASSERT #true
+            TEST SUCCESS: foo
+        "#]]
+    );
+
+    run_test!(
+        test_assert_false,
+        "@Test fun foo() {assert(false);}",
+        expect![[r#"
+            TEST STARTED: foo
+            ASSERT #false
+            TEST FAILED: foo
+            ERROR: assertion failed
+        "#]]
+    );
+
+    run_test!(
+        test_assert_string,
+        "@Test fun foo() {assert(\"bar\");}",
+        expect![[r#"
+            TEST STARTED: foo
+            ASSERT "bar"
+            TEST FAILED: foo
+            ERROR: assert argument must be a boolean, instead found value: '"bar"'
+        "#]]
+    );
+
 }
