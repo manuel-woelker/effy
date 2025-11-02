@@ -1,5 +1,3 @@
-
-
 #[derive(Debug)]
 pub enum TestEvent {
     TestStarted {
@@ -13,9 +11,5 @@ pub enum TestEvent {
     TestFailed {
         test_name: String,
         // TODO: error diagnostics
-    }
-
-
-
-
+    },
 }

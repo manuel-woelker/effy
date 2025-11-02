@@ -4,5 +4,5 @@ pub mod environment;
 pub mod interpreter;
 pub mod native_function;
 pub mod shared_string_buffer;
-pub mod value;
 pub mod test_event;
+pub mod value;
