@@ -12,8 +12,16 @@ pub struct FunctionDefinition {
 }
 
 impl FunctionDefinition {
-    pub fn new(name: IdentifierNode, annotations: Vec<IdentifierNode>, statements: Vec<StatementNode>) -> Self {
-        Self { name, annotations, statements }
+    pub fn new(
+        name: IdentifierNode,
+        annotations: Vec<IdentifierNode>,
+        statements: Vec<StatementNode>,
+    ) -> Self {
+        Self {
+            name,
+            annotations,
+            statements,
+        }
     }
 }
 
@@ -23,8 +31,8 @@ impl TestPrint for FunctionDefinition {
     fn test_print(&self, write: &mut dyn Write, indent: usize) -> EffyResult<()> {
         writeln!(write, "fun {}", self.name.data.name)?;
         for annotation in &self.annotations {
-//            self.indent(write, indent+1)?;
-//            writeln!(write, "@{}", annotation.name)?;
+            //            self.indent(write, indent+1)?;
+            //            writeln!(write, "@{}", annotation.name)?;
             annotation.test_print(write, indent + 1)?;
             writeln!(write)?;
         }

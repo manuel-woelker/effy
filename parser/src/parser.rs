@@ -82,8 +82,10 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
             statements.push(self.parse_statement()?);
         }
         self.consume(TokenKind::BraceClose)?;
-        let function_definition_node =
-            self.create_node(start_position, FunctionDefinition::new(name, annotations, statements))?;
+        let function_definition_node = self.create_node(
+            start_position,
+            FunctionDefinition::new(name, annotations, statements),
+        )?;
         self.create_node(
             start_position,
             Statement::FunctionDefinition(FunctionDefinitionStatement {
@@ -436,7 +438,6 @@ mod test {
             🌲  56+7        literal "hello"
         "#]]
     );
-
 
     fn test_parse_error(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
