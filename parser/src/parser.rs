@@ -67,7 +67,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     fn parse_function_definition_statement(&mut self) -> EffyResult<StatementNode> {
         let start_position = self.current_position();
         self.consume(TokenKind::Fun)?;
-        let name = self.parse_identifier()?;
+        let name = self.parse_identifier("function name")?;
         self.consume(TokenKind::ParenOpen)?;
         self.consume(TokenKind::ParenClose)?;
         self.consume(TokenKind::BraceOpen)?;
@@ -116,7 +116,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         let start_position = self.current_position();
         let result = match self.current_token.kind() {
             TokenKind::Identifier => {
-                let name = self.parse_identifier()?;
+                let name = self.parse_identifier("variable name")?;
                 self.create_node(start_position, Expression::var_use(name))
             }
             TokenKind::String => {
@@ -149,9 +149,9 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         token.lexeme(self.source.content())
     }
 
-    fn parse_identifier(&mut self) -> EffyResult<IdentifierNode> {
+    fn parse_identifier(&mut self, expected_identifier_role: &str) -> EffyResult<IdentifierNode> {
         let start_position = self.current_position();
-        let name = self.consume(TokenKind::Identifier)?;
+        let name = self.consume_with_role(TokenKind::Identifier, expected_identifier_role)?;
         self.create_node(start_position, Identifier::new(self.lexeme(&name)))
     }
 
@@ -174,6 +174,25 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
                     self.current_token, token_kind
                 ),
                 format!("expected {token_kind} here"),
+            );
+        }
+        let token = self.advance()?;
+        Ok(token)
+    }
+
+    #[track_caller]
+    fn consume_with_role(
+        &mut self,
+        token_kind: TokenKind,
+        expected_role: &str,
+    ) -> EffyResult<Token> {
+        if self.current_token.kind() != token_kind {
+            return self.create_token_error(
+                format!(
+                    "Unexpected token: {}, expected {expected_role} ({token_kind})",
+                    self.current_token
+                ),
+                format!("expected {expected_role} ({token_kind}) here"),
             );
         }
         let token = self.advance()?;
@@ -414,7 +433,7 @@ mod test {
     }
 
     test_parse_error!(
-        error_fun_no_name,
+        error_close_paren,
         ")",
         expect![[r#"
             error: Unexpected token: “)” (Close Parenthesis)
@@ -425,19 +444,18 @@ mod test {
         "#]]
     );
 
-    /*
-        test_parse_error!(
-            error_fun_no_name,
-            "fun () {}",
-            expect![[r#"
-            error: Unexpected token: “)” (Close Parenthesis)
-              ╭▸ script.effy:1:6
+    test_parse_error!(
+        error_fun_no_name,
+        "fun () {};",
+        expect![[r#"
+            error: Unexpected token: Open Parenthesis, expected function name (Identifier)
+              ╭▸ script.effy:1:5
               │
-            1 │ fun () {}
-              ╰╴     ━ expected primary expression here
+            1 │ fun () {};
+              ╰╴    ━ expected function name (Identifier) here
         "#]]
-        );
-    */
+    );
+
     fn test_parse_script_error(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
         let Err(error) = parse_script(&source_file) else {
