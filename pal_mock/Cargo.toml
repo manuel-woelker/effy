@@ -1,0 +1,12 @@
+[package]
+name = "effy-pal-mock"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/pal_mock.rs"
+
+[dependencies]
+effy-base = { version = "0.1.0", path = "../base" }
+effy-pal = { version = "0.1.0", path = "../pal" }
+expect-test = { workspace = true }

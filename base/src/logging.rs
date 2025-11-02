@@ -21,7 +21,7 @@ pub fn init_logging() {
         .with(tracing_error::ErrorLayer::default())
         .with(
             EnvFilter::builder()
-                //                .parse("INFO,hyperlit_core=DEBUG,hyperlit_engine=DEBUG")
+                //                .parse("INFO,effy_core=DEBUG,effy_engine=DEBUG")
                 .parse("INFO")
                 .unwrap(),
         )

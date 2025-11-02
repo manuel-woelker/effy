@@ -4,6 +4,7 @@ use std::fmt::Write;
 pub type EffyResult<T> = Result<T, EffyError>;
 
 use crate::unansi;
+pub use color_eyre::eyre::Context;
 pub use color_eyre::eyre::anyhow as err;
 pub use color_eyre::eyre::bail;
 pub use color_eyre::eyre::ensure;
