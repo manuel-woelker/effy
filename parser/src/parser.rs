@@ -56,7 +56,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
     }
 
     fn parse_statement(&mut self) -> EffyResult<StatementNode> {
-        if let TokenKind::Fun = self.current_token.kind() {
+        if let TokenKind::Fun | TokenKind::At = self.current_token.kind() {
             return self.parse_function_definition_statement();
         }
         let result = self.parse_expression_statement()?;
@@ -66,6 +66,12 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
 
     fn parse_function_definition_statement(&mut self) -> EffyResult<StatementNode> {
         let start_position = self.current_position();
+        let mut annotations: Vec<IdentifierNode> = vec![];
+        while let TokenKind::At = self.current_token.kind() {
+            self.consume(TokenKind::At)?;
+            let annotation = self.parse_identifier("annotation")?;
+            annotations.push(annotation);
+        }
         self.consume(TokenKind::Fun)?;
         let name = self.parse_identifier("function name")?;
         self.consume(TokenKind::ParenOpen)?;
@@ -77,7 +83,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         }
         self.consume(TokenKind::BraceClose)?;
         let function_definition_node =
-            self.create_node(start_position, FunctionDefinition { name, statements })?;
+            self.create_node(start_position, FunctionDefinition::new(name, annotations, statements))?;
         self.create_node(
             start_position,
             Statement::FunctionDefinition(FunctionDefinitionStatement {
@@ -413,6 +419,24 @@ mod test {
             🌲  33+7        literal "hello"
         "#]]
     );
+
+    test_parse_script!(
+        fun_with_annotation,
+        r#"
+        @Test
+        fun simple() {
+            print("hello");
+        }"#,
+        expect![[r#"
+            🌲   0+75 Script
+            🌲   9+66  stmt function definition
+            🌲   9+66   fun simple
+            🌲  10+4     ❮Test❯
+            🌲  50+14    stmt  call  var use ❮print❯
+            🌲  56+7        literal "hello"
+        "#]]
+    );
+
 
     fn test_parse_error(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
