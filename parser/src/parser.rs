@@ -141,6 +141,14 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
                     Expression::literal(Value::Int(self.lexeme(&token).parse::<i64>()?)),
                 )
             }
+            TokenKind::True => {
+                self.advance()?;
+                self.create_node(start_position, Expression::literal(Value::Boolean(true)))
+            }
+            TokenKind::False => {
+                self.advance()?;
+                self.create_node(start_position, Expression::literal(Value::Boolean(false)))
+            }
             _other => self.create_token_error(
                 format!(
                     "Unexpected token: “{}” ({})",
@@ -370,6 +378,24 @@ mod test {
         expect![[r#"
             🌲   0+4  Script
             🌲   1+2   stmt  literal 19i64
+        "#]]
+    );
+
+    test_parse_script!(
+        literal_true,
+        "true;",
+        expect![[r#"
+            🌲   0+5  Script
+            🌲   0+4   stmt  literal #true
+        "#]]
+    );
+
+    test_parse_script!(
+        literal_false,
+        "false;",
+        expect![[r#"
+            🌲   0+6  Script
+            🌲   0+5   stmt  literal #false
         "#]]
     );
 

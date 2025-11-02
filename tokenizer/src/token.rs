@@ -4,8 +4,15 @@ use std::fmt::Display;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TokenKind {
+    // Keywords
     Fun,
+    True,
+    False,
+
+    // Identifier
     Identifier,
+
+    // Symbols
     ParenOpen,
     ParenClose,
     BraceOpen,
@@ -17,8 +24,12 @@ pub enum TokenKind {
     Colon,
     Dot,
     At,
+
+    // Literals
     String,
     Integer,
+
+    // EOF
     EndOfFile,
 }
 
@@ -26,6 +37,8 @@ impl TokenKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             TokenKind::Fun => "keyword fun",
+            TokenKind::True => "keyword true",
+            TokenKind::False => "keyword false",
             TokenKind::Identifier => "Identifier",
             TokenKind::ParenOpen => "Open Parenthesis",
             TokenKind::ParenClose => "Close Parenthesis",

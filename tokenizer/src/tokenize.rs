@@ -163,6 +163,8 @@ impl<'source> Tokenizer<'source> {
                     &self.source_file.content()[self.start_position..self.current_position];
                 let token_kind = match identifier {
                     "fun" => TokenKind::Fun,
+                    "true" => TokenKind::True,
+                    "false" => TokenKind::False,
                     _ => TokenKind::Identifier,
                 };
                 self.create_token(token_kind)
@@ -314,6 +316,23 @@ mod tests {
         expect!([r#"
             🧩   0+10 Integer        1234567890
             🧩  10+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        literal_true,
+        "true",
+        expect!([r#"
+            🧩   0+4  keyword true   true
+            🧩   4+0  End of File    
+        "#])
+    );
+    test_lex!(
+        literal_false,
+        "false",
+        expect!([r#"
+            🧩   0+5  keyword false  false
+            🧩   5+0  End of File    
         "#])
     );
 
