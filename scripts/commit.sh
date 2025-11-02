@@ -2,11 +2,7 @@
 
 set -euo pipefail
 
-export RUSTFLAGS='-D warnings'
-
-cargo fmt
-cargo clippy -- -D warnings
-cargo test
+./git-hooks/pre-commit-check.sh
 
 jj desc
 jj new
