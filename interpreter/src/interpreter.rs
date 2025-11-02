@@ -9,17 +9,24 @@ use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::script::ScriptNode;
 use effy_ast::statement::{Statement, StatementNode};
 use effy_base::error::{EffyResult, bail};
+use effy_base::source_error::SourceError;
 use effy_base::source_file::SourceFile;
+use effy_base::source_message::{SourceLabel, SourceMessage};
+use effy_base::source_snippet::SourceSnippet;
 use effy_parser::parser::parse_script;
 
 pub struct Interpreter {
     environment: Environment,
+    source_file: SourceFile,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         let environment = Environment::new();
-        Interpreter { environment }
+        Interpreter {
+            environment,
+            source_file: SourceFile::new("<uninitialized>", ""),
+        }
     }
 
     pub fn add_native_function(
@@ -46,7 +53,8 @@ impl Interpreter {
     }
 
     pub fn run_script(&mut self, source_file: SourceFile) -> EffyResult<InterpreterValue> {
-        let script = parse_script(&source_file)?;
+        self.source_file = source_file;
+        let script = parse_script(&self.source_file)?;
         self.eval_script(&script)
     }
 
@@ -55,7 +63,8 @@ impl Interpreter {
         source_file: SourceFile,
         callback: &mut dyn FnMut(TestEvent),
     ) -> EffyResult<()> {
-        let script = parse_script(&source_file)?;
+        self.source_file = source_file;
+        let script = parse_script(&self.source_file)?;
         self.eval_tests(&script, callback)
     }
 
@@ -157,7 +166,23 @@ impl Interpreter {
     }
 
     pub fn eval_var_use(&mut self, var_use: &VarUseExpression) -> EffyResult<InterpreterValue> {
-        let value = self.environment.get(&var_use.name().name)?;
+        let value = self.environment.get(&var_use.name().name).ok_or_else(|| {
+            let source_snippet = SourceSnippet::new(
+                self.source_file.path().to_string(),
+                self.source_file.content().to_string(),
+                1,
+                0,
+            );
+            let mut source_message = SourceMessage::error(
+                format!("Could not resolve binding '{}'", var_use.name().name),
+                source_snippet,
+            );
+            source_message.add_label(SourceLabel::new(
+                var_use.name().span.clone(),
+                "name could not be found".to_string(),
+            ));
+            SourceError::new(source_message)
+        })?;
         Ok(value)
     }
 }
@@ -170,6 +195,7 @@ mod test {
     use crate::value::{InterpreterValue, ValueKind};
     use effy_base::error::{EffyResult, bail};
     use effy_base::source_file::SourceFile;
+    use effy_base::unansi;
     use effy_base::value::Value;
     use expect_test::{Expect, expect};
 
@@ -264,7 +290,7 @@ mod test {
             }
         })?;
         let result_string = result_string_buffer.to_string();
-        expected.assert_eq(&result_string);
+        expected.assert_eq(&unansi(&result_string));
         Ok(())
     }
 
@@ -296,7 +322,11 @@ mod test {
         expect![[r#"
             TEST STARTED: foo
             TEST FAILED: foo
-            ERROR: Could not resolve binding 'bar'
+            ERROR: error: Could not resolve binding 'bar'
+              ╭▸ script.effy:1:18
+              │
+            1 │ @Test fun foo() {bar;}
+              ╰╴                 ━━━ name could not be found
         "#]]
     );
 

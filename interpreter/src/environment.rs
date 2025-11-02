@@ -1,5 +1,4 @@
 use crate::value::InterpreterValue;
-use effy_base::error::{EffyResult, err};
 use std::collections::HashMap;
 
 pub struct Environment {
@@ -17,10 +16,7 @@ impl Environment {
         self.bindings.insert(name.into(), value.into());
     }
 
-    pub fn get(&self, name: impl AsRef<str>) -> EffyResult<InterpreterValue> {
-        self.bindings
-            .get(name.as_ref())
-            .cloned()
-            .ok_or_else(|| err!("Could not resolve binding '{}'", name.as_ref()))
+    pub fn get(&self, name: impl AsRef<str>) -> Option<InterpreterValue> {
+        self.bindings.get(name.as_ref()).cloned()
     }
 }
