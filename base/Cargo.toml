@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
-tracing-error = "0.2.1"
-color-eyre = "0.6.5"
-relative-path = "2.0.1"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-error = { workspace = true }
+color-eyre = { workspace = true }
+relative-path = { workspace = true }
 annotate-snippets = "0.12.8"
 strip-ansi-escapes = "0.2.1"
 
 [dev-dependencies]
-expect-test = "1.5.1"
+expect-test = { workspace = true }
