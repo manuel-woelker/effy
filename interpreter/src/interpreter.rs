@@ -168,10 +168,10 @@ mod test {
     use crate::shared_string_buffer::SharedStringBuffer;
     use crate::test_event::TestEvent;
     use crate::value::{InterpreterValue, ValueKind};
-    use effy_base::error::{bail, EffyResult};
+    use effy_base::error::{EffyResult, bail};
     use effy_base::source_file::SourceFile;
-    use expect_test::{Expect, expect};
     use effy_base::value::Value;
+    use expect_test::{Expect, expect};
 
     fn test_eval(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
@@ -241,7 +241,10 @@ mod test {
                 }
                 Ok(InterpreterValue::unit())
             } else {
-                bail!("assert argument must be a boolean, instead found value: '{}'", first_argument);
+                bail!(
+                    "argument to assert() call must evaluate boolean, but instead found: '{}'",
+                    first_argument
+                );
             }
         });
         let result_string_clone = result_string_buffer.clone();
@@ -253,7 +256,11 @@ mod test {
                 writeln!(result_string_clone, "TEST SUCCESS: {}", test_name);
             }
             TestEvent::TestFailed { test_name, error } => {
-                writeln!(result_string_clone, "TEST FAILED: {}\nERROR: {}", test_name, error);
+                writeln!(
+                    result_string_clone,
+                    "TEST FAILED: {}\nERROR: {}",
+                    test_name, error
+                );
             }
         })?;
         let result_string = result_string_buffer.to_string();
@@ -321,8 +328,7 @@ mod test {
             TEST STARTED: foo
             ASSERT "bar"
             TEST FAILED: foo
-            ERROR: assert argument must be a boolean, instead found value: '"bar"'
+            ERROR: argument to assert() call must evaluate boolean, but instead found: '"bar"'
         "#]]
     );
-
 }

@@ -12,3 +12,5 @@ cargo clippy -- -D warnings
 
 echo "Running tests"
 cargo test
+
+git add .
