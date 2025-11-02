@@ -4,11 +4,13 @@ use crate::value::{InterpreterValue, ValueKind};
 use effy_ast::expression::{
     CallExpression, Expression, ExpressionNode, LiteralExpression, VarUseExpression,
 };
+use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::script::ScriptNode;
 use effy_ast::statement::{Statement, StatementNode};
 use effy_base::error::{EffyResult, bail};
 use effy_base::source_file::SourceFile;
 use effy_parser::parser::parse_script;
+use crate::test_event::TestEvent;
 
 pub struct Interpreter {
     environment: Environment,
@@ -48,9 +50,51 @@ impl Interpreter {
         self.eval_script(&script)
     }
 
+    pub fn run_tests(&mut self, source_file: SourceFile, callback: &mut dyn FnMut(TestEvent)) -> EffyResult<()> {
+        let script = parse_script(&source_file)?;
+        self.eval_tests(&script, callback)
+    }
+
     pub fn eval_script(&mut self, script: &ScriptNode) -> EffyResult<InterpreterValue> {
-        let mut result = InterpreterValue::unit();
+        self.eval_statements(script.statements.as_slice())
+    }
+
+
+    pub fn eval_tests(&mut self, script: &ScriptNode, callback: &mut dyn FnMut(TestEvent)) -> EffyResult<()> {
         for statement in &script.statements {
+            if let Statement::FunctionDefinition(function_definition) = &statement.data {
+                if !function_definition.function_definition.annotations.iter().any(|annotation| annotation.name == "Test") {
+                    continue;
+                }
+                let test_name = function_definition.function_definition.name.data.name.clone();
+                callback(TestEvent::TestStarted {
+                    test_name: test_name.clone(),
+                });
+                match self.eval_test(&function_definition.function_definition) {
+                    Ok(_) => {
+                        callback(TestEvent::TestSuccess {
+                            test_name: test_name.clone(),
+                        });
+                    }
+                    Err(_err) => {
+                        callback(TestEvent::TestFailed {
+                            test_name: test_name.clone(),
+                        });
+                    }
+                };
+            }
+        }
+        Ok(())
+    }
+
+    pub fn eval_test(&mut self, test_definition: &FunctionDefinition) -> EffyResult<()> {
+        self.eval_statements(test_definition.statements.as_slice())?;
+        Ok(())
+    }
+
+    fn eval_statements(&mut self, statements: &[StatementNode]) -> EffyResult<InterpreterValue> {
+        let mut result = InterpreterValue::unit();
+        for statement in statements {
             result = self.eval_statement(statement)?;
         }
         Ok(result)
@@ -108,6 +152,7 @@ mod test {
     use effy_base::error::EffyResult;
     use effy_base::source_file::SourceFile;
     use expect_test::{Expect, expect};
+    use crate::test_event::TestEvent;
 
     fn test_eval(source: &str, expected: Expect) -> EffyResult<()> {
         let source_file = SourceFile::new("script.effy", source);
@@ -156,4 +201,56 @@ mod test {
             PRINTLN "hello world"
             RESULT: unit"#]]
     );
+
+    fn run_test(source: &str, expected: Expect) -> EffyResult<()> {
+        let source_file = SourceFile::new("script.effy", source);
+        let mut interpreter = Interpreter::new();
+        let result_string_buffer = SharedStringBuffer::new();
+        let result_string_clone = result_string_buffer.clone();
+        interpreter.add_native_function_fn("println", move |context| {
+            write!(result_string_clone, "PRINTLN {}\n", context.arguments()[0]);
+            Ok(InterpreterValue::unit())
+        });
+        let result_string_clone = result_string_buffer.clone();
+        interpreter.run_tests(source_file, &mut |event| {
+            match event {
+                TestEvent::TestStarted { test_name } => {
+                    writeln!(result_string_clone, "TEST STARTED: {}", test_name);
+                }
+                TestEvent::TestSuccess { test_name } => {
+                    writeln!(result_string_clone, "TEST SUCCESS: {}", test_name);
+                }
+                TestEvent::TestFailed { test_name } => {
+                    writeln!(result_string_clone, "TEST FAILED: {}", test_name);
+                }
+            }
+        })?;
+        let result_string = result_string_buffer.to_string();
+        expected.assert_eq(&result_string);
+        Ok(())
+    }
+
+    macro_rules! run_test {
+        ($name:ident, $source:literal, $expected:expr) => {
+            #[test]
+            fn $name() -> EffyResult<()> {
+                run_test($source, $expected)
+            }
+        };
+    }
+
+    run_test!(test_nothing, "", expect![""]);
+
+    run_test!(test_empty_fun_unannotated, "fun foo() {}", expect![""]);
+
+    run_test!(test_empty_test, "@Test fun foo() {}", expect![[r#"
+        TEST STARTED: foo
+        TEST SUCCESS: foo
+    "#]]);
+
+    run_test!(test_fail, "@Test fun foo() {bar;}", expect![[r#"
+        TEST STARTED: foo
+        TEST FAILED: foo
+    "#]]);
+
 }
