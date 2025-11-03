@@ -10,3 +10,5 @@ path = "src/pal_mock.rs"
 effy-base = { version = "0.1.0", path = "../base" }
 effy-pal = { version = "0.1.0", path = "../pal" }
 expect-test = { workspace = true }
+
+indent = "0.1.1"

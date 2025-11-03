@@ -6,8 +6,17 @@ use std::sync::Arc;
 
 pub type FilePath = RelativePathBuf;
 
-// Platform abstraction layer used to decouple logic from the underlying platform
+/// Platform abstraction layer used to decouple logic from the underlying platform
 pub trait Pal: Debug + Sync + Send + 'static {
+    /// Get the command line arguments, the first one being the path to the binary
+    fn args(&self) -> Vec<String>;
+
+    /// Print a message to stderr
+    fn print(&self, message: &str);
+
+    /// Exit the process with the given exit code
+    fn exit(&self, exit_code: i32);
+
     /// Read a file, the path is relative to the base directory
     fn read_file(&self, path: &FilePath) -> EffyResult<Box<dyn Read + 'static>>;
 

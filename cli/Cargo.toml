@@ -13,4 +13,10 @@ path = "src/effy_main.rs"
 effy-base = { version = "0.1.0", path = "../base" }
 tracing-error = { workspace = true }
 color-eyre = { workspace = true }
+effy-pal = { version = "0.1.0", path = "../pal" }
+effy-pal-real = { version = "0.1.0", path = "../pal_real" }
+effy-interpreter = { version = "0.1.0", path = "../interpreter" }
+
+[dev-dependencies]
+effy-pal-mock = { version = "0.1.0", path = "../pal_mock" }
 

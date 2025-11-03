@@ -1,0 +1,30 @@
+
+fun should_not_run() {
+	print("This should not run");
+}
+
+@Test
+fun empty_test() {
+}
+
+@Test
+fun literal_test() {
+ 	"hello world";
+ 	42;
+ 	true;
+}
+
+@Test
+fun failing_test_name_not_found() {
+	foo;
+}
+
+@Test
+fun assert_true() {
+	assert(true);
+}
+
+@Test
+fun assert_false() {
+	assert(false);
+}

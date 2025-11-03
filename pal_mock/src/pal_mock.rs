@@ -1,6 +1,7 @@
 use effy_base::error::EffyResult;
 use effy_pal::{FileChangeCallback, FilePath, Pal};
 use expect_test::Expect;
+use indent::indent_all_with;
 use std::fmt::Debug;
 use std::io::{Read, Write};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -12,6 +13,7 @@ pub struct PalMock {
 
 #[derive(Default)]
 struct PalMockInner {
+    args: Vec<String>,
     effects_string: String,
 }
 
@@ -19,6 +21,7 @@ impl PalMock {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(RwLock::new(PalMockInner {
+                args: vec!["./effy.exe".to_string()],
                 effects_string: String::new(),
             })),
         }
@@ -54,9 +57,27 @@ impl PalMock {
     pub fn clear_effects(&self) {
         self.write().effects_string.clear();
     }
+
+    pub fn set_args(&self, args: &[&str]) {
+        let mut all_args = vec!["./effy.exe".to_string()];
+        all_args.extend(args.iter().map(|s| s.to_string()));
+        self.write().args = all_args;
+    }
 }
 
 impl Pal for PalMock {
+    fn args(&self) -> Vec<String> {
+        self.read().args.clone()
+    }
+
+    fn print(&self, message: &str) {
+        self.log_effect(format!("PRINT:\n{}", indent_all_with("\t", message)));
+    }
+
+    fn exit(&self, exit_code: i32) {
+        self.log_effect(format!("EXIT: {}", exit_code));
+    }
+
     fn read_file(&self, _path: &FilePath) -> EffyResult<Box<dyn Read + 'static>> {
         todo!()
     }

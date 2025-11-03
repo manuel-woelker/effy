@@ -44,6 +44,18 @@ impl Default for PalReal {
 }
 
 impl Pal for PalReal {
+    fn args(&self) -> Vec<String> {
+        std::env::args().collect()
+    }
+
+    fn print(&self, message: &str) {
+        eprint!("{message}");
+    }
+
+    fn exit(&self, exit_code: i32) {
+        std::process::exit(exit_code);
+    }
+
     fn read_file(&self, path: &FilePath) -> EffyResult<Box<dyn Read + 'static>> {
         Ok(Box::new(File::open(self.resolve_path(path)?)?))
     }
