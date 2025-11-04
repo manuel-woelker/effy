@@ -1,5 +1,6 @@
 use crate::value::InterpreterValue;
 use effy_base::error::EffyResult;
+use effy_base::source_span::SourceSpan;
 
 pub struct NativeFunction {
     name: String,
@@ -25,6 +26,7 @@ impl NativeFunction {
 
 pub struct NativeFunctionContext {
     pub arguments: Vec<InterpreterValue>,
+    pub argument_spans: Vec<SourceSpan>,
 }
 
 impl NativeFunctionContext {

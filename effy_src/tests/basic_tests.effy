@@ -28,3 +28,12 @@ fun assert_true() {
 fun assert_false() {
 	assert(false);
 }
+
+/*
+@Test
+fun add_prime_numbers() {
+	assert(5 + 7 == 12);
+	assert(7 + 11 == 18);
+	assert(11 + 13 == 24);
+}
+*/

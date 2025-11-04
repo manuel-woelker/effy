@@ -154,10 +154,18 @@ impl Interpreter {
             .iter()
             .map(|arg| self.eval_expression(arg))
             .collect::<EffyResult<Vec<InterpreterValue>>>()?;
+        let argument_spans = call
+            .arguments()
+            .iter()
+            .map(|arg| arg.span.clone())
+            .collect::<Vec<_>>();
         let callee = self.eval_expression(call.callee())?;
         match callee.value_kind() {
             ValueKind::NativeFunction(native_function) => {
-                native_function.invoke(&mut NativeFunctionContext { arguments })
+                native_function.invoke(&mut NativeFunctionContext {
+                    arguments,
+                    argument_spans,
+                })
             }
             _ => {
                 bail!("Expression value is not callable: {}", callee);

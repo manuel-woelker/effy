@@ -12,6 +12,7 @@ pub mod value;
 pub type FilePath = relative_path::RelativePathBuf;
 pub type SourceString = String;
 pub use annotate_snippets;
+pub use yansi::Paint;
 
 pub fn unansi(string: &str) -> String {
     strip_ansi_escapes::strip_str(string)

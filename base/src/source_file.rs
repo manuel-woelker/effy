@@ -1,6 +1,12 @@
 use crate::{FilePath, SourceString};
+use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct SourceFile {
+    inner: Arc<SourceFileInner>,
+}
+
+struct SourceFileInner {
     path: FilePath,
     content: SourceString,
 }
@@ -8,16 +14,18 @@ pub struct SourceFile {
 impl SourceFile {
     pub fn new(path: impl Into<FilePath>, content: impl Into<SourceString>) -> Self {
         Self {
-            path: path.into(),
-            content: content.into(),
+            inner: Arc::new(SourceFileInner {
+                path: path.into(),
+                content: content.into(),
+            }),
         }
     }
 
     pub fn path(&self) -> &FilePath {
-        &self.path
+        &self.inner.path
     }
 
     pub fn content(&self) -> &SourceString {
-        &self.content
+        &self.inner.content
     }
 }
