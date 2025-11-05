@@ -3,7 +3,8 @@ use crate::native_function::{NativeFunction, NativeFunctionContext, NativeFuncti
 use crate::test_event::TestEvent;
 use crate::value::{InterpreterValue, ValueKind};
 use effy_ast::expression::{
-    CallExpression, Expression, ExpressionNode, LiteralExpression, VarUseExpression,
+    BinaryExpression, BinaryOperator, CallExpression, Expression, ExpressionNode,
+    LiteralExpression, VarUseExpression,
 };
 use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::script::ScriptNode;
@@ -13,6 +14,7 @@ use effy_base::source_error::SourceError;
 use effy_base::source_file::SourceFile;
 use effy_base::source_message::{SourceLabel, SourceMessage};
 use effy_base::source_snippet::SourceSnippet;
+use effy_base::value::Value;
 use effy_parser::parser::parse_script;
 
 pub struct Interpreter {
@@ -141,7 +143,34 @@ impl Interpreter {
             Expression::Literal(literal) => self.eval_literal(literal)?,
             Expression::Call(call) => self.eval_call(call)?,
             Expression::VarUse(var_use) => self.eval_var_use(var_use)?,
+            Expression::Binary(binary_expression) => {
+                self.eval_binary_expression(binary_expression)?
+            }
         })
+    }
+
+    pub fn eval_binary_expression(
+        &mut self,
+        binary_expression: &BinaryExpression,
+    ) -> EffyResult<InterpreterValue> {
+        let left = self.eval_expression(binary_expression.left())?;
+        let right = self.eval_expression(binary_expression.right())?;
+        let result = match (left.value_kind(), right.value_kind()) {
+            (
+                ValueKind::PrimitiveValue(Value::Int(left)),
+                ValueKind::PrimitiveValue(Value::Int(right)),
+            ) => match binary_expression.operator() {
+                BinaryOperator::Add => InterpreterValue::int(left + right),
+                BinaryOperator::Multiply => InterpreterValue::int(left * right),
+                BinaryOperator::Equals => InterpreterValue::bool(left == right),
+                _ => bail!(
+                    "Unsupported binary expression for ints: '{}'",
+                    binary_expression.operator()
+                ),
+            },
+            _ => bail!("Could not eval binary expression"),
+        };
+        Ok(result)
     }
 
     pub fn eval_literal(&mut self, literal: &LiteralExpression) -> EffyResult<InterpreterValue> {
@@ -252,6 +281,31 @@ mod test {
         "println(\"hello world\");",
         expect![[r#"
             PRINTLN "hello world"
+            RESULT: unit"#]]
+    );
+
+    test_eval!(
+        add,
+        "println(1+2);",
+        expect![[r#"
+            PRINTLN 3i64
+            RESULT: unit"#]]
+    );
+
+    test_eval!(
+        mul,
+        "println(2*3);",
+        expect![[r#"
+            PRINTLN 6i64
+            RESULT: unit"#]]
+    );
+
+    test_eval!(
+        equals,
+        "println(1==2);println(2==2);",
+        expect![[r#"
+            PRINTLN #false
+            PRINTLN #true
             RESULT: unit"#]]
     );
 

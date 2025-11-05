@@ -108,6 +108,51 @@ impl<'source> Tokenizer<'source> {
             }
         }
         Some(match self.current_char {
+            '/' => {
+                // Line comments
+                if self.next_char == '/' {
+                    self.advance();
+                    self.advance();
+                    loop {
+                        if self.current_char == '\n' || self.current_char == EOF {
+                            break;
+                        }
+                        self.advance();
+                    }
+                    return self.next_token();
+                }
+                // Block Comments (allowing nesting)
+                if self.next_char == '*' {
+                    let mut nesting = 1;
+                    self.advance();
+                    self.advance();
+                    loop {
+                        if self.current_char == EOF {
+                            return Some(make_source_error_result(
+                                self.source_file,
+                                "Unterminated block comment",
+                                "This block comment is not terminated with '*/'",
+                                self.start_position..self.current_position,
+                            ));
+                        }
+                        if self.current_char == '*' && self.next_char == '/' {
+                            nesting -= 1;
+                            if nesting == 0 {
+                                break;
+                            }
+                        } else if self.current_char == '/' && self.next_char == '*' {
+                            nesting += 1;
+                        }
+                        self.advance();
+                    }
+                    self.advance();
+                    self.advance();
+                    self.advance();
+                    return self.next_token();
+                }
+                self.advance_and_create_token(TokenKind::Slash)
+            }
+
             // Symbols
             '(' => self.advance_and_create_token(TokenKind::ParenOpen),
             ')' => self.advance_and_create_token(TokenKind::ParenClose),
@@ -120,6 +165,42 @@ impl<'source> Tokenizer<'source> {
             ':' => self.advance_and_create_token(TokenKind::Colon),
             '.' => self.advance_and_create_token(TokenKind::Dot),
             '@' => self.advance_and_create_token(TokenKind::At),
+            '*' => self.advance_and_create_token(TokenKind::Star),
+            '+' => self.advance_and_create_token(TokenKind::Plus),
+            '-' => self.advance_and_create_token(TokenKind::Minus),
+            '=' => {
+                if self.next_char == '=' {
+                    self.advance();
+                    self.advance_and_create_token(TokenKind::EqualsEquals)
+                } else {
+                    self.advance_and_create_token(TokenKind::Equals)
+                }
+            }
+            '>' => {
+                if self.next_char == '=' {
+                    self.advance();
+                    self.advance_and_create_token(TokenKind::GreaterThanEquals)
+                } else {
+                    self.advance_and_create_token(TokenKind::GreaterThan)
+                }
+            }
+            '<' => {
+                if self.next_char == '=' {
+                    self.advance();
+                    self.advance_and_create_token(TokenKind::LessThanEquals)
+                } else {
+                    self.advance_and_create_token(TokenKind::LessThan)
+                }
+            }
+            '!' => {
+                if self.next_char == '=' {
+                    self.advance();
+                    self.advance_and_create_token(TokenKind::NotEquals)
+                } else {
+                    self.advance_and_create_token(TokenKind::Exclamation)
+                }
+            }
+
             // Strings
             '"' => loop {
                 self.advance();
@@ -231,37 +312,51 @@ mod tests {
         expected.assert_eq(&test_string);
     }
 
-    fn test_lex_symbol(input: &str, expected: &str) {
+    fn test_lex_symbol(input: &str) {
         let test_string = input_to_test_string(input);
+        let expected = format!("'{}'", input);
+        let len = input.len();
         assert_eq!(
             test_string,
-            format!("🧩   0+1  {expected:14} {input}\n🧩   1+0  End of File    \n")
+            format!("🧩   0+{len}  {expected:14} {input}\n🧩   {len}+0  End of File    \n")
         );
     }
 
     macro_rules! test_lex_symbol {
-        ($(($name:ident $input:literal $expected:literal))*) => {
+        ($(($name:ident $input:literal))*) => {
             $(
             #[test]
             fn $name() {
-                test_lex_symbol($input, $expected);
+                test_lex_symbol($input);
             }
             )*
         };
     }
 
     test_lex_symbol!(
-        (paren_open "(" "Open Parenthesis")
-        (paren_close ")" "Close Parenthesis")
-        (brace_open "{" "Open Brace")
-        (brace_close "}" "Close Brace")
-        (bracket_open "[" "Open Bracket")
-        (bracket_close "]" "Close Bracket")
-        (semicolon ";" "Semicolon")
-        (colon ":" "Colon")
-        (dot "." "Dot")
-        (at "@" "At")
-        (comma "," "Comma")
+        (paren_open "(")
+        (paren_close ")")
+        (brace_open "{")
+        (brace_close "}")
+        (bracket_open "[")
+        (bracket_close "]")
+        (semicolon ";")
+        (colon ":")
+        (dot ".")
+        (at "@")
+        (comma ",")
+        (slash "/")
+        (star "*")
+        (plus "+")
+        (minus "-")
+        (exclamation "!")
+        (equals "=")
+        (equals_equals "==")
+        (not_equals "!=")
+        (less_than "<")
+        (less_than_equals "<=")
+        (greater_than ">")
+        (greater_than_equals ">=")
     );
 
     macro_rules! test_lex {
@@ -282,11 +377,52 @@ mod tests {
     );
 
     test_lex!(
+        block_comment_small,
+        "/**/",
+        expect!([r#"
+            🧩   4+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        block_comment_bigger,
+        "/* * */",
+        expect!([r#"
+            🧩   7+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        block_comment_nested,
+        "/* /* * */ */",
+        expect!([r#"
+            🧩  13+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        line_comment_simple,
+        "// foo",
+        expect!([r#"
+            🧩   6+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        line_comment_newline,
+        "// foo\nbar",
+        expect!([r#"
+            🧩   7+3  Identifier     bar
+            🧩  10+0  End of File    
+        "#])
+    );
+
+    test_lex!(
         parens,
         "()",
         expect!([r#"
-            🧩   0+1  Open Parenthesis (
-            🧩   1+1  Close Parenthesis )
+            🧩   0+1  '('            (
+            🧩   1+1  ')'            )
             🧩   2+0  End of File    
         "#])
     );
@@ -305,7 +441,7 @@ mod tests {
         "19;",
         expect!([r#"
             🧩   0+2  Integer        19
-            🧩   2+1  Semicolon      ;
+            🧩   2+1  ';'            ;
             🧩   3+0  End of File    
         "#])
     );
@@ -391,15 +527,35 @@ mod tests {
     );
 
     test_lex!(
+        triple_equals,
+        "===",
+        expect!([r#"
+            🧩   0+2  '=='           ==
+            🧩   2+1  '='            =
+            🧩   3+0  End of File    
+        "#])
+    );
+
+    test_lex!(
+        quadruple_equals,
+        "====",
+        expect!([r#"
+            🧩   0+2  '=='           ==
+            🧩   2+2  '=='           ==
+            🧩   4+0  End of File    
+        "#])
+    );
+
+    test_lex!(
         function,
         "fun foo() {}",
         expect!([r#"
             🧩   0+3  keyword fun    fun
             🧩   4+3  Identifier     foo
-            🧩   7+1  Open Parenthesis (
-            🧩   8+1  Close Parenthesis )
-            🧩  10+1  Open Brace     {
-            🧩  11+1  Close Brace    }
+            🧩   7+1  '('            (
+            🧩   8+1  ')'            )
+            🧩  10+1  '{'            {
+            🧩  11+1  '}'            }
             🧩  12+0  End of File    
         "#])
     );
@@ -408,10 +564,10 @@ mod tests {
         "print(\"hello\");",
         expect!([r#"
             🧩   0+5  Identifier     print
-            🧩   5+1  Open Parenthesis (
+            🧩   5+1  '('            (
             🧩   6+7  String         "hello"
-            🧩  13+1  Close Parenthesis )
-            🧩  14+1  Semicolon      ;
+            🧩  13+1  ')'            )
+            🧩  14+1  ';'            ;
             🧩  15+0  End of File    
         "#])
     );
@@ -426,6 +582,34 @@ mod tests {
               │
             1 │ "foo
               ╰╴    ━ This string requires a terminating " character here
+        "#])
+    );
+
+    test_lex!(
+        unterminated_block_comment,
+        "/*",
+        expect!([r#"
+            ⚠ ERROR:
+            error: Unterminated block comment
+              ╭▸ test.effy:1:1
+              │
+            1 │ /*
+              ╰╴━━ This block comment is not terminated with '*/'
+        "#])
+    );
+
+    test_lex!(
+        unterminated_block_comment_multiline,
+        "/*\nfoo\nbar\n",
+        expect!([r#"
+            ⚠ ERROR:
+            error: Unterminated block comment
+              ╭▸ test.effy:1:1
+              │
+            1 │ ┏ /*
+            2 │ ┃ foo
+            3 │ ┃ bar
+              ╰╴┗━━━━┛ This block comment is not terminated with '*/'
         "#])
     );
 

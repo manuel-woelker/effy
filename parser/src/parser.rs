@@ -1,5 +1,5 @@
 use effy_ast::ast_node::AstNode;
-use effy_ast::expression::{Expression, ExpressionNode};
+use effy_ast::expression::{BinaryOperator, Expression, ExpressionNode};
 use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::identifier::{Identifier, IdentifierNode};
 use effy_ast::script::{Script, ScriptNode};
@@ -20,6 +20,13 @@ pub fn parse_script(script_source: &SourceFile) -> EffyResult<ScriptNode> {
     let mut tokens = tokenize(script_source);
     let mut parser = Parser::new(script_source, &mut tokens)?;
     parser.parse_script()
+}
+
+#[derive(Debug)]
+struct OperatorInfo {
+    operator: BinaryOperator,
+    is_right_associative: bool,
+    precedence: u8,
 }
 
 #[allow(dead_code)]
@@ -110,7 +117,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
 
     fn parse_call(&mut self) -> EffyResult<ExpressionNode> {
         let start_position = self.current_position();
-        let expr = self.parse_primary_expression()?;
+        let expr = self.parse_binary_expression(0)?;
         if !self.is_at(TokenKind::ParenOpen) {
             return Ok(expr);
         }
@@ -118,6 +125,84 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         let argument = self.parse_expression()?;
         self.consume(TokenKind::ParenClose)?;
         self.create_node(start_position, Expression::call(expr, vec![argument]))
+    }
+
+    fn parse_binary_expression(&mut self, current_precedence: u8) -> EffyResult<ExpressionNode> {
+        // Use precedence climbing
+        let start_position = self.current_position();
+        let mut left = self.parse_primary_expression()?;
+        while let Some(operator) = self.parse_binary_operator()
+            && operator.precedence >= current_precedence
+        {
+            self.advance()?;
+            let right = if operator.is_right_associative {
+                self.parse_binary_expression(operator.precedence)?
+            } else {
+                self.parse_binary_expression(operator.precedence + 1)?
+            };
+            left = self.create_node(
+                start_position,
+                Expression::binary(left, operator.operator, right),
+            )?;
+        }
+        Ok(left)
+    }
+
+    fn parse_binary_operator(&mut self) -> Option<OperatorInfo> {
+        let operator = match self.current_token.kind() {
+            TokenKind::Plus => OperatorInfo {
+                precedence: 1,
+                is_right_associative: false,
+                operator: BinaryOperator::Add,
+            },
+            TokenKind::Minus => OperatorInfo {
+                precedence: 1,
+                is_right_associative: false,
+                operator: BinaryOperator::Subtract,
+            },
+            TokenKind::Star => OperatorInfo {
+                precedence: 2,
+                is_right_associative: false,
+                operator: BinaryOperator::Multiply,
+            },
+            TokenKind::Slash => OperatorInfo {
+                precedence: 2,
+                is_right_associative: false,
+                operator: BinaryOperator::Divide,
+            },
+            TokenKind::LessThan => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::LessThan,
+            },
+            TokenKind::LessThanEquals => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::LessThanOrEqual,
+            },
+            TokenKind::GreaterThan => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::GreaterThan,
+            },
+            TokenKind::GreaterThanEquals => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::GreaterThanOrEqual,
+            },
+            TokenKind::EqualsEquals => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::Equals,
+            },
+            TokenKind::NotEquals => OperatorInfo {
+                precedence: 0,
+                is_right_associative: false,
+                operator: BinaryOperator::NotEquals,
+            },
+            _ => return None,
+        };
+        Some(operator)
     }
 
     fn parse_primary_expression(&mut self) -> EffyResult<ExpressionNode> {
@@ -449,6 +534,58 @@ mod test {
     );
 
     test_parse_script!(
+        math_addition,
+        r#"1+2;"#,
+        expect![[r#"
+            🌲   0+4  Script
+            🌲   0+3   stmt  binary +
+            🌲   0+1      literal 1i64
+            🌲   2+1      literal 2i64
+        "#]]
+    );
+
+    test_parse_script!(
+        math_addition_associativity,
+        r#"1+2+3;"#,
+        expect![[r#"
+            🌲   0+6  Script
+            🌲   0+5   stmt  binary +
+            🌲   0+3      binary +
+            🌲   0+1       literal 1i64
+            🌲   2+1       literal 2i64
+            🌲   4+1      literal 3i64
+        "#]]
+    );
+
+    test_parse_script!(
+        math_add_mul_precedence,
+        r#"1+2*3;"#,
+        expect![[r#"
+            🌲   0+6  Script
+            🌲   0+5   stmt  binary +
+            🌲   0+1      literal 1i64
+            🌲   2+3      binary *
+            🌲   2+1       literal 2i64
+            🌲   4+1       literal 3i64
+        "#]]
+    );
+
+    test_parse_script!(
+        math_add_mul_eqeq_precedence,
+        r#"6 == 1 + 2 * 3;"#,
+        expect![[r#"
+            🌲   0+15 Script
+            🌲   0+14  stmt  binary ==
+            🌲   0+1      literal 6i64
+            🌲   5+9      binary +
+            🌲   5+1       literal 1i64
+            🌲   9+5       binary *
+            🌲   9+1        literal 2i64
+            🌲  13+1        literal 3i64
+        "#]]
+    );
+
+    test_parse_script!(
         fun_with_annotation,
         r#"
         @Test
@@ -487,7 +624,7 @@ mod test {
         error_close_paren,
         ")",
         expect![[r#"
-            error: Unexpected token: “)” (Close Parenthesis)
+            error: Unexpected token: “)” (')')
               ╭▸ script.effy:1:1
               │
             1 │ )
@@ -499,7 +636,7 @@ mod test {
         error_fun_no_name,
         "fun () {};",
         expect![[r#"
-            error: Unexpected token: Open Parenthesis, expected function name (Identifier)
+            error: Unexpected token: '(', expected function name (Identifier)
               ╭▸ script.effy:1:5
               │
             1 │ fun () {};
@@ -529,7 +666,7 @@ mod test {
         error_no_expression,
         "}",
         expect![[r#"
-            error: Unexpected token: “}” (Close Brace)
+            error: Unexpected token: “}” ('}')
               ╭▸ script.effy:1:1
               │
             1 │ }

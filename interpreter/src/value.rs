@@ -25,6 +25,14 @@ impl InterpreterValue {
         }
     }
 
+    pub fn int(value: i64) -> Self {
+        Self::primitive(Value::Int(value))
+    }
+
+    pub fn bool(value: bool) -> Self {
+        Self::primitive(Value::Boolean(value))
+    }
+
     pub fn native_function(native_function: NativeFunction) -> Self {
         Self {
             value_kind: ValueKind::NativeFunction(Arc::new(native_function)),

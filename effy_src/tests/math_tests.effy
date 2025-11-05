@@ -1,0 +1,22 @@
+@Test
+fun equals() {
+	assert(0==0);
+	assert(1==1);
+}
+
+@Test
+fun addition() {
+	assert(1+2==3);
+	assert(2+3==5);
+}
+
+@Test
+fun mul() {
+	assert(2*3==6);
+}
+
+@Test
+fun precedence() {
+	assert(7 == 1+2*3);
+}
+

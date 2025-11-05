@@ -24,6 +24,18 @@ pub enum TokenKind {
     Colon,
     Dot,
     At,
+    Slash,
+    Star,
+    Plus,
+    Minus,
+    Exclamation,
+    Equals,
+    EqualsEquals,
+    NotEquals,
+    LessThan,
+    LessThanEquals,
+    GreaterThan,
+    GreaterThanEquals,
 
     // Literals
     String,
@@ -36,23 +48,44 @@ pub enum TokenKind {
 impl TokenKind {
     pub fn as_str(&self) -> &'static str {
         match self {
+            // keywords
             TokenKind::Fun => "keyword fun",
             TokenKind::True => "keyword true",
             TokenKind::False => "keyword false",
+
+            // Identifier
             TokenKind::Identifier => "Identifier",
-            TokenKind::ParenOpen => "Open Parenthesis",
-            TokenKind::ParenClose => "Close Parenthesis",
-            TokenKind::BraceOpen => "Open Brace",
-            TokenKind::BraceClose => "Close Brace",
-            TokenKind::BracketOpen => "Open Bracket",
-            TokenKind::BracketClose => "Close Bracket",
-            TokenKind::Comma => "Comma",
-            TokenKind::Semicolon => "Semicolon",
-            TokenKind::Colon => "Colon",
-            TokenKind::Dot => "Dot",
-            TokenKind::At => "At",
+
+            // Symbols
+            TokenKind::ParenOpen => "'('",
+            TokenKind::ParenClose => "')'",
+            TokenKind::BraceOpen => "'{'",
+            TokenKind::BraceClose => "'}'",
+            TokenKind::BracketOpen => "'['",
+            TokenKind::BracketClose => "']'",
+            TokenKind::Comma => "','",
+            TokenKind::Semicolon => "';'",
+            TokenKind::Colon => "':'",
+            TokenKind::Dot => "'.'",
+            TokenKind::At => "'@'",
+            TokenKind::Slash => "'/'",
+            TokenKind::Star => "'*'",
+            TokenKind::Plus => "'+'",
+            TokenKind::Minus => "'-'",
+            TokenKind::Exclamation => "'!'",
+            TokenKind::Equals => "'='",
+            TokenKind::EqualsEquals => "'=='",
+            TokenKind::NotEquals => "'!='",
+            TokenKind::LessThan => "'<'",
+            TokenKind::LessThanEquals => "'<='",
+            TokenKind::GreaterThan => "'>'",
+            TokenKind::GreaterThanEquals => "'>='",
+
+            // Literals
             TokenKind::String => "String",
             TokenKind::Integer => "Integer",
+
+            // EOF
             TokenKind::EndOfFile => "End of File",
         }
     }
