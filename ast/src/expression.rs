@@ -137,7 +137,6 @@ impl TestPrint for Expression {
             Expression::Call(call) => {
                 write!(write, " call ")?;
                 call.callee.deref().deref().test_print(write, indent + 1)?;
-                writeln!(write)?;
                 for argument in &call.arguments {
                     argument.test_print(write, indent + 1)?;
                 }
@@ -145,6 +144,7 @@ impl TestPrint for Expression {
             Expression::VarUse(var_use) => {
                 write!(write, " var use ")?;
                 var_use.name.deref().test_print(write, indent + 1)?;
+                writeln!(write)?;
             }
             Expression::Literal(literal) => {
                 writeln!(write, " literal {}", &literal.value)?;

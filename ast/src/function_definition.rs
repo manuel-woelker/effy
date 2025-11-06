@@ -8,6 +8,7 @@ use std::fmt::Write;
 pub struct FunctionDefinition {
     pub name: IdentifierNode,
     pub annotations: Vec<IdentifierNode>,
+    pub parameters: Vec<IdentifierNode>,
     pub statements: Vec<StatementNode>,
 }
 
@@ -15,11 +16,13 @@ impl FunctionDefinition {
     pub fn new(
         name: IdentifierNode,
         annotations: Vec<IdentifierNode>,
+        parameters: Vec<IdentifierNode>,
         statements: Vec<StatementNode>,
     ) -> Self {
         Self {
             name,
             annotations,
+            parameters,
             statements,
         }
     }
@@ -34,6 +37,10 @@ impl TestPrint for FunctionDefinition {
             //            self.indent(write, indent+1)?;
             //            writeln!(write, "@{}", annotation.name)?;
             annotation.test_print(write, indent + 1)?;
+            writeln!(write)?;
+        }
+        for parameter in &self.parameters {
+            parameter.test_print(write, indent + 1)?;
             writeln!(write)?;
         }
         for statement in &self.statements {

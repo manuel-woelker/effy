@@ -1,0 +1,14 @@
+
+fun should_not_run() {
+	print("This should not run");
+}
+
+@Test
+fun empty_test() {
+	print("outer");
+	fun inner() {
+		print("inner");
+	}
+	inner();
+}
+

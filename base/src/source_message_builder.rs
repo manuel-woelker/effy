@@ -32,6 +32,7 @@ impl<'source> SourceMessageBuilder<'source> {
         self
     }
 
+    #[track_caller]
     pub fn build(self) -> SourceMessage {
         SourceMessage::new(
             self.level,
@@ -40,10 +41,12 @@ impl<'source> SourceMessageBuilder<'source> {
         )
     }
 
+    #[track_caller]
     pub fn build_error_result<T>(self) -> EffyResult<T> {
         Err(SourceError::new(self.build()).into())
     }
 
+    #[track_caller]
     pub fn build_error(self) -> EffyError {
         SourceError::new(self.build()).into()
     }

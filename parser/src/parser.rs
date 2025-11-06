@@ -79,8 +79,21 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         }
         self.consume(TokenKind::Fun)?;
         let name = self.parse_identifier("function name")?;
+
+        // Parameters
         self.consume(TokenKind::ParenOpen)?;
+        let mut parameters = Vec::new();
+        while !self.is_at(TokenKind::ParenClose) {
+            let parameter = self.parse_identifier("function parameter")?;
+            parameters.push(parameter);
+            if !self.is_at(TokenKind::Comma) {
+                break;
+            }
+            self.advance()?;
+        }
         self.consume(TokenKind::ParenClose)?;
+
+        // Body
         self.consume(TokenKind::BraceOpen)?;
         let mut statements = Vec::new();
         while self.current_token.kind() != TokenKind::BraceClose {
@@ -89,7 +102,7 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         self.consume(TokenKind::BraceClose)?;
         let function_definition_node = self.create_node(
             start_position,
-            FunctionDefinition::new(name, annotations, statements),
+            FunctionDefinition::new(name, annotations, parameters, statements),
         )?;
         self.create_node(
             start_position,
@@ -120,9 +133,17 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
             return Ok(expr);
         }
         self.consume(TokenKind::ParenOpen)?;
-        let argument = self.parse_expression()?;
+        let mut arguments = Vec::new();
+        while !self.is_at(TokenKind::ParenClose) {
+            let argument = self.parse_expression()?;
+            arguments.push(argument);
+            if !self.is_at(TokenKind::Comma) {
+                break;
+            }
+            self.advance()?;
+        }
         self.consume(TokenKind::ParenClose)?;
-        self.create_node(start_position, Expression::call(expr, vec![argument]))
+        self.create_node(start_position, Expression::call(expr, arguments))
     }
 
     fn parse_binary_expression(&mut self, current_precedence: u8) -> EffyResult<ExpressionNode> {
@@ -499,30 +520,6 @@ mod test {
     );
 
     test_parse_script!(
-        fun_empty,
-        "fun empty() {}",
-        expect![[r#"
-            🌲   0+14 Script
-            🌲   0+14  stmt function definition
-            🌲   0+14   fun empty
-        "#]]
-    );
-
-    test_parse_script!(
-        fun_simple,
-        r#"fun simple() {
-            print("hello");
-        }"#,
-        expect![[r#"
-            🌲   0+52 Script
-            🌲   0+52  stmt function definition
-            🌲   0+52   fun simple
-            🌲  27+14    stmt  call  var use ❮print❯
-            🌲  33+7        literal "hello"
-        "#]]
-    );
-
-    test_parse_script!(
         math_addition,
         r#"1+2;"#,
         expect![[r#"
@@ -575,6 +572,30 @@ mod test {
     );
 
     test_parse_script!(
+        fun_empty,
+        "fun empty() {}",
+        expect![[r#"
+            🌲   0+14 Script
+            🌲   0+14  stmt function definition
+            🌲   0+14   fun empty
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_simple,
+        r#"fun simple() {
+            print("hello");
+        }"#,
+        expect![[r#"
+            🌲   0+52 Script
+            🌲   0+52  stmt function definition
+            🌲   0+52   fun simple
+            🌲  27+14    stmt  call  var use ❮print❯
+            🌲  33+7        literal "hello"
+        "#]]
+    );
+
+    test_parse_script!(
         fun_with_annotation,
         r#"
         @Test
@@ -588,6 +609,85 @@ mod test {
             🌲  10+4     ❮Test❯
             🌲  50+14    stmt  call  var use ❮print❯
             🌲  56+7        literal "hello"
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_def_1_arg,
+        "fun empty(foo) {}",
+        expect![[r#"
+            🌲   0+17 Script
+            🌲   0+17  stmt function definition
+            🌲   0+17   fun empty
+            🌲  10+3     ❮foo❯
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_def_2_args,
+        "fun empty(foo, bar) {}",
+        expect![[r#"
+            🌲   0+22 Script
+            🌲   0+22  stmt function definition
+            🌲   0+22   fun empty
+            🌲  10+3     ❮foo❯
+            🌲  15+3     ❮bar❯
+        "#]]
+    );
+
+    test_parse_script!(
+        fun_def_3_args,
+        "fun empty(foo, bar, baz) {}",
+        expect![[r#"
+            🌲   0+27 Script
+            🌲   0+27  stmt function definition
+            🌲   0+27   fun empty
+            🌲  10+3     ❮foo❯
+            🌲  15+3     ❮bar❯
+            🌲  20+3     ❮baz❯
+        "#]]
+    );
+
+    test_parse_script!(
+        test_parse_fun_call_0_args,
+        r#"run();"#,
+        expect![[r#"
+            🌲   0+6  Script
+            🌲   0+5   stmt  call  var use ❮run❯
+        "#]]
+    );
+
+    test_parse_script!(
+        test_parse_fun_call_1_args,
+        r#"run("one", "two");"#,
+        expect![[r#"
+            🌲   0+18 Script
+            🌲   0+17  stmt  call  var use ❮run❯
+            🌲   4+5      literal "one"
+            🌲  11+5      literal "two"
+        "#]]
+    );
+
+    test_parse_script!(
+        test_parse_fun_call_2_args,
+        r#"run(one, two);"#,
+        expect![[r#"
+            🌲   0+14 Script
+            🌲   0+13  stmt  call  var use ❮run❯
+            🌲   4+3      var use ❮one❯
+            🌲   9+3      var use ❮two❯
+        "#]]
+    );
+
+    test_parse_script!(
+        test_parse_fun_call_3_args,
+        r#"run(one, two, three);"#,
+        expect![[r#"
+            🌲   0+21 Script
+            🌲   0+20  stmt  call  var use ❮run❯
+            🌲   4+3      var use ❮one❯
+            🌲   9+3      var use ❮two❯
+            🌲  14+5      var use ❮three❯
         "#]]
     );
 
