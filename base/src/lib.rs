@@ -4,6 +4,7 @@ pub mod logging;
 pub mod source_error;
 pub mod source_file;
 pub mod source_message;
+pub mod source_message_builder;
 pub mod source_snippet;
 pub mod source_span;
 pub mod test_print;

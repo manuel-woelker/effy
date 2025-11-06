@@ -1,9 +1,11 @@
+use crate::source_file::SourceFile;
+use crate::source_message_builder::SourceMessageBuilder;
 use crate::source_snippet::SourceSnippet;
 use crate::source_span::SourceSpan;
 use annotate_snippets::renderer::DecorStyle;
 use annotate_snippets::{Annotation, AnnotationKind, Group, Level, Renderer, Snippet};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum SourceMessageLevel {
     Error,
     Warning,
@@ -15,7 +17,6 @@ pub struct SourceMessage {
     level: SourceMessageLevel,
     message: String,
     source_snippet: SourceSnippet,
-    labels: Vec<SourceLabel>,
 }
 
 #[derive(Debug)]
@@ -44,8 +45,22 @@ impl SourceMessage {
             level,
             message,
             source_snippet,
-            labels: vec![],
         }
+    }
+
+    pub fn builder(
+        source_file: &SourceFile,
+        level: SourceMessageLevel,
+        message: impl Into<String>,
+    ) -> SourceMessageBuilder<'_> {
+        SourceMessageBuilder::new(source_file, level, message)
+    }
+
+    pub fn error_builder(
+        source_file: &SourceFile,
+        message: impl Into<String>,
+    ) -> SourceMessageBuilder<'_> {
+        SourceMessageBuilder::new(source_file, SourceMessageLevel::Error, message)
     }
 
     pub fn error(message: String, source_snippet: SourceSnippet) -> Self {
@@ -60,10 +75,6 @@ impl SourceMessage {
         Self::new(SourceMessageLevel::Info, message, source_snippet)
     }
 
-    pub fn add_label(&mut self, source_label: SourceLabel) {
-        self.labels.push(source_label);
-    }
-
     pub fn render(&self) -> String {
         let renderer = Renderer::styled().decor_style(DecorStyle::Unicode);
         renderer.render(&self.create_report())
@@ -71,13 +82,15 @@ impl SourceMessage {
 
     fn create_report(&self) -> Vec<Group<'_>> {
         let mut snippet: Snippet<Annotation> =
-            Snippet::source(self.source_snippet.source_snippet())
+            Snippet::source(self.source_snippet.source_excerpt())
                 .line_start(self.source_snippet.start_line())
-                .path(self.source_snippet.file_path());
-        for label in &self.labels {
+                .path(self.source_snippet.file_path())
+                .fold(false);
+        let byte_offset = self.source_snippet.start_offset_in_bytes();
+        for label in self.source_snippet.labels() {
             snippet = snippet.annotation(
                 AnnotationKind::Primary
-                    .span(label.span.start()..label.span.end())
+                    .span(label.span.start() - byte_offset..label.span.end() - byte_offset)
                     .label(label.label.clone()),
             );
         }
@@ -104,12 +117,12 @@ mod tests {
 
     #[test]
     fn test_source_message() {
-        let source_snippet = SourceSnippet::new("hello_world.effy", "fun foo {}", 19, 4);
-        let mut source_message = SourceMessage::error("test message".to_string(), source_snippet);
-        source_message.add_label(SourceLabel::new(
+        let mut source_snippet = SourceSnippet::new("hello_world.effy", "fun foo {}", 19, 0);
+        source_snippet.add_label(SourceLabel::new(
             SourceSpan::new(4..7),
             "test label".to_string(),
         ));
+        let source_message = SourceMessage::error("test message".to_string(), source_snippet);
 
         let rendered_message = source_message.render();
         expect![[r#"

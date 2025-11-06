@@ -6,11 +6,9 @@ use effy_ast::script::{Script, ScriptNode};
 use effy_ast::statement::{
     ExpressionStatement, FunctionDefinitionStatement, Statement, StatementNode,
 };
-use effy_base::error::{EffyError, EffyResult, bail, err};
-use effy_base::source_error::SourceError;
+use effy_base::error::{EffyResult, bail, err};
 use effy_base::source_file::SourceFile;
-use effy_base::source_message::{SourceLabel, SourceMessage};
-use effy_base::source_snippet::SourceSnippet;
+use effy_base::source_message::SourceMessage;
 use effy_base::test_print::TestPrint;
 use effy_base::value::Value;
 use effy_tokenizer::token::{Token, TokenKind};
@@ -306,27 +304,18 @@ impl<'source, 'tokens> Parser<'source, 'tokens> {
         error_message: String,
         token_label: String,
     ) -> EffyResult<T> {
-        Err(self.create_token_error_internal(error_message, token_label))
+        self.create_token_error_internal(error_message, token_label)
     }
 
     #[track_caller]
-    fn create_token_error_internal(
+    fn create_token_error_internal<T>(
         &mut self,
         error_message: String,
         token_label: String,
-    ) -> EffyError {
-        let source_snippet = SourceSnippet::new(
-            self.source.path().to_string(),
-            self.source.content().to_string(),
-            1,
-            0,
-        );
-        let mut source_message = SourceMessage::error(error_message, source_snippet);
-        source_message.add_label(SourceLabel::new(
-            self.current_token.span().clone(),
-            token_label,
-        ));
-        SourceError::new(source_message).into()
+    ) -> EffyResult<T> {
+        SourceMessage::error_builder(self.source, error_message)
+            .label(self.current_token.span().clone(), token_label)
+            .build_error_result()
     }
 
     fn is_at(&self, token_kind: TokenKind) -> bool {

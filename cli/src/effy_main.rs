@@ -37,7 +37,7 @@ fn main_cli(pal: &PalHandle) -> EffyResult<()> {
                 }
             }
             _ => {
-                pal.print(&format!("Unknown command: '{}'", command));
+                pal.print(&format!("Unknown command: '{}'\n", command));
                 pal.exit(44);
             }
         }

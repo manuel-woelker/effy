@@ -1,7 +1,7 @@
 use crate::token::{Token, TokenKind};
 use effy_base::error::EffyResult;
-use effy_base::source_error::make_source_error_result;
 use effy_base::source_file::SourceFile;
+use effy_base::source_message::SourceMessage;
 use effy_base::source_span::SourceSpan;
 use std::str::Chars;
 
@@ -128,12 +128,17 @@ impl<'source> Tokenizer<'source> {
                     self.advance();
                     loop {
                         if self.current_char == EOF {
-                            return Some(make_source_error_result(
-                                self.source_file,
-                                "Unterminated block comment",
-                                "This block comment is not terminated with '*/'",
-                                self.start_position..self.current_position,
-                            ));
+                            return Some(
+                                SourceMessage::error_builder(
+                                    self.source_file,
+                                    "Unterminated block comment",
+                                )
+                                .label(
+                                    self.start_position..self.current_position,
+                                    "This block comment is not terminated with '*/'",
+                                )
+                                .build_error_result(),
+                            );
                         }
                         if self.current_char == '*' && self.next_char == '/' {
                             nesting -= 1;
@@ -206,12 +211,14 @@ impl<'source> Tokenizer<'source> {
                 self.advance();
                 match self.current_char {
                     EOF => {
-                        return Some(make_source_error_result(
-                            self.source_file,
-                            "Unterminated string",
-                            "This string requires a terminating \" character here",
-                            self.current_position..self.current_position + 1,
-                        ));
+                        return Some(
+                            SourceMessage::error_builder(self.source_file, "Unterminated string")
+                                .label(
+                                    self.current_position..self.current_position,
+                                    "This string requires a terminating \" character here",
+                                )
+                                .build_error_result(),
+                        );
                     }
                     '"' => {
                         self.advance();
@@ -252,12 +259,17 @@ impl<'source> Tokenizer<'source> {
             }
             unexpected => {
                 self.state = TokenizerState::EndOfFile;
-                return Some(make_source_error_result(
-                    self.source_file,
-                    format!("Unexpected character '{unexpected}'"),
-                    "This character is not expected here",
-                    self.current_position..self.current_position + unexpected.len_utf8(),
-                ));
+                return Some(
+                    SourceMessage::error_builder(
+                        self.source_file,
+                        format!("Unexpected character '{unexpected}'"),
+                    )
+                    .label(
+                        self.current_position..self.current_position + unexpected.len_utf8(),
+                        "This character is not expected here",
+                    )
+                    .build_error_result(),
+                );
             }
         })
     }
@@ -615,13 +627,13 @@ mod tests {
 
     test_lex!(
         unexpected,
-        "👨‍🚀",
+        "\n\n👨‍🚀",
         expect!([r#"
             ⚠ ERROR:
             error: Unexpected character '👨'
-              ╭▸ test.effy:1:1
+              ╭▸ test.effy:3:1
               │
-            1 │ 👨🚀
+            3 │ 👨🚀
               ╰╴━━ This character is not expected here
         "#])
     );

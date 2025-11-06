@@ -10,10 +10,8 @@ use effy_ast::function_definition::FunctionDefinition;
 use effy_ast::script::ScriptNode;
 use effy_ast::statement::{Statement, StatementNode};
 use effy_base::error::{EffyResult, bail};
-use effy_base::source_error::SourceError;
 use effy_base::source_file::SourceFile;
-use effy_base::source_message::{SourceLabel, SourceMessage};
-use effy_base::source_snippet::SourceSnippet;
+use effy_base::source_message::SourceMessage;
 use effy_base::value::Value;
 use effy_parser::parser::parse_script;
 
@@ -204,21 +202,12 @@ impl Interpreter {
 
     pub fn eval_var_use(&mut self, var_use: &VarUseExpression) -> EffyResult<InterpreterValue> {
         let value = self.environment.get(&var_use.name().name).ok_or_else(|| {
-            let source_snippet = SourceSnippet::new(
-                self.source_file.path().to_string(),
-                self.source_file.content().to_string(),
-                1,
-                0,
-            );
-            let mut source_message = SourceMessage::error(
+            SourceMessage::error_builder(
+                &self.source_file,
                 format!("Could not resolve binding '{}'", var_use.name().name),
-                source_snippet,
-            );
-            source_message.add_label(SourceLabel::new(
-                var_use.name().span.clone(),
-                "name could not be found".to_string(),
-            ));
-            SourceError::new(source_message)
+            )
+            .label(var_use.name().span.clone(), "name could not be found")
+            .build_error()
         })?;
         Ok(value)
     }

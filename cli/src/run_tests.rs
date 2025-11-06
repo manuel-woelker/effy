@@ -1,6 +1,6 @@
 use effy_base::error::{EffyError, EffyResult, bail};
-use effy_base::source_error::make_source_error_result;
 use effy_base::source_file::SourceFile;
+use effy_base::source_message::SourceMessage;
 use effy_base::value::Value;
 use effy_base::{FilePath, Paint};
 use effy_interpreter::interpreter::Interpreter;
@@ -35,12 +35,12 @@ pub fn run_tests(pal: &PalHandle) -> EffyResult<TestResult> {
             // check if first_argument is a boolean
             if let ValueKind::PrimitiveValue(Value::Boolean(value)) = first_argument.value_kind() {
                 if !value {
-                    return make_source_error_result(
-                        &source_file_clone,
-                        "Assertion failed",
-                        "This expression evaluated to 'false'",
-                        context.argument_spans[0].clone(),
-                    )?;
+                    return SourceMessage::error_builder(&source_file_clone, "Assertion failed")
+                        .label(
+                            context.argument_spans[0].clone(),
+                            "This expression evaluated to 'false'",
+                        )
+                        .build_error_result();
                 }
                 Ok(InterpreterValue::unit())
             } else {
