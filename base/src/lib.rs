@@ -13,6 +13,7 @@ pub mod value;
 pub type FilePath = relative_path::RelativePathBuf;
 pub type SourceString = String;
 pub use annotate_snippets;
+pub use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 pub use yansi::Paint;
 
 pub fn unansi(string: &str) -> String {

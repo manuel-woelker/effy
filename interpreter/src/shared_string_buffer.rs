@@ -1,5 +1,6 @@
+use effy_base::RwLock;
 use std::fmt::{Arguments, Display, Write};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SharedStringBuffer {
@@ -14,18 +15,17 @@ impl SharedStringBuffer {
     }
 
     pub fn push_str(&self, s: impl AsRef<str>) {
-        self.buffer.write().unwrap().push_str(s.as_ref());
+        self.buffer.write().push_str(s.as_ref());
     }
 
     pub fn write_fmt(&self, args: Arguments) {
-        write!(self.buffer.write().unwrap(), "{}", args).unwrap();
+        write!(self.buffer.write(), "{}", args).unwrap();
     }
 
     pub fn into_string(self) -> String {
         Arc::into_inner(self.buffer)
             .expect("Arc should be unique, but there are still more references to it")
             .into_inner()
-            .unwrap()
     }
 }
 
@@ -38,7 +38,7 @@ impl Write for SharedStringBuffer {
 
 impl Display for SharedStringBuffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.buffer.read().unwrap())
+        f.write_str(&self.buffer.read())
     }
 }
 

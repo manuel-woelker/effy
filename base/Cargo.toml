@@ -12,6 +12,7 @@ relative-path = { workspace = true }
 annotate-snippets = "0.12.8"
 strip-ansi-escapes = "0.2.1"
 yansi = { workspace = true }
+parking_lot = "0.12.5"
 
 [dev-dependencies]
 expect-test = { workspace = true }

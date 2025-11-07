@@ -1,4 +1,5 @@
 use crate::environment::Environment;
+use crate::environment_stack::EnvironmentStack;
 use crate::native_function::{NativeFunction, NativeFunctionContext, NativeFunctionTrait};
 use crate::test_event::TestEvent;
 use crate::value::{InterpreterValue, ValueKind};
@@ -16,17 +17,29 @@ use effy_base::value::Value;
 use effy_parser::parser::parse_script;
 
 pub struct Interpreter {
-    environment: Environment,
+    environment_stack: EnvironmentStack,
     source_file: SourceFile,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        let environment = Environment::new();
+        let environment_stack = EnvironmentStack::new();
         Interpreter {
-            environment,
+            environment_stack,
             source_file: SourceFile::new("<uninitialized>", ""),
         }
+    }
+
+    fn add_binding(&mut self, name: impl Into<String>, value: impl Into<InterpreterValue>) {
+        self.current_environment().add(name, value);
+    }
+
+    fn current_environment(&mut self) -> &mut Environment {
+        self.environment_stack.top()
+    }
+
+    fn get_binding(&mut self, name: impl AsRef<str>) -> Option<InterpreterValue> {
+        self.current_environment().get(name)
     }
 
     pub fn add_native_function(
@@ -35,7 +48,7 @@ impl Interpreter {
         function: impl NativeFunctionTrait,
     ) {
         let name = name.into();
-        self.environment.add(
+        self.add_binding(
             name.clone(),
             InterpreterValue::native_function(NativeFunction::new(name, function)),
         );
@@ -81,7 +94,7 @@ impl Interpreter {
             if let Statement::FunctionDefinition(function_definition) = &statement.data {
                 if !function_definition
                     .function_definition
-                    .annotations
+                    .annotations()
                     .iter()
                     .any(|annotation| annotation.name == "Test")
                 {
@@ -89,7 +102,7 @@ impl Interpreter {
                 }
                 let test_name = function_definition
                     .function_definition
-                    .name
+                    .name()
                     .data
                     .name
                     .clone();
@@ -115,7 +128,7 @@ impl Interpreter {
     }
 
     pub fn eval_test(&mut self, test_definition: &FunctionDefinition) -> EffyResult<()> {
-        self.eval_statements(test_definition.statements.as_slice())?;
+        self.eval_statements(test_definition.statements().as_slice())?;
         Ok(())
     }
 
@@ -130,8 +143,21 @@ impl Interpreter {
     pub fn eval_statement(&mut self, statement: &StatementNode) -> EffyResult<InterpreterValue> {
         Ok(match &statement.data {
             Statement::Expression(expression) => self.eval_expression(&expression.expression)?,
-            Statement::FunctionDefinition(_) => {
-                todo!()
+            Statement::FunctionDefinition(function_definition) => {
+                let function_value = InterpreterValue::coded_function(
+                    function_definition.function_definition.clone(),
+                    self.environment_stack.top().clone(),
+                );
+                self.add_binding(
+                    function_definition
+                        .function_definition
+                        .name()
+                        .data
+                        .name
+                        .clone(),
+                    function_value.clone(),
+                );
+                function_value
             }
         })
     }
@@ -194,14 +220,30 @@ impl Interpreter {
                     argument_spans,
                 })
             }
+            ValueKind::CodedFunction(coded_function) => {
+                self.push_environment(coded_function.environment().new_child());
+                let result = self.eval_statements(
+                    coded_function.function_definition().statements().as_slice(),
+                )?;
+                self.pop_environment();
+                Ok(result)
+            }
             _ => {
                 bail!("Expression value is not callable: {}", callee);
             }
         }
     }
 
+    pub fn push_environment(&mut self, environment: Environment) {
+        self.environment_stack.push(environment);
+    }
+
+    pub fn pop_environment(&mut self) {
+        self.environment_stack.pop();
+    }
+
     pub fn eval_var_use(&mut self, var_use: &VarUseExpression) -> EffyResult<InterpreterValue> {
-        let value = self.environment.get(&var_use.name().name).ok_or_else(|| {
+        let value = self.get_binding(&var_use.name().name).ok_or_else(|| {
             SourceMessage::error_builder(
                 &self.source_file,
                 format!("Could not resolve binding '{}'", var_use.name().name),
@@ -295,6 +337,16 @@ mod test {
         expect![[r#"
             PRINTLN #false
             PRINTLN #true
+            RESULT: unit"#]]
+    );
+
+    test_eval!(
+        fun_call,
+        "fun foo() {println(1);} println(0);foo();println(2);",
+        expect![[r#"
+            PRINTLN 0i64
+            PRINTLN 1i64
+            PRINTLN 2i64
             RESULT: unit"#]]
     );
 

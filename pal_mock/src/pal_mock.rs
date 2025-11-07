@@ -1,10 +1,11 @@
 use effy_base::error::EffyResult;
+use effy_base::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use effy_pal::{FileChangeCallback, FilePath, Pal};
 use expect_test::Expect;
 use indent::indent_all_with;
 use std::fmt::Debug;
 use std::io::{Read, Write};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::Arc;
 
 #[derive(Clone, Default)]
 pub struct PalMock {
@@ -28,15 +29,11 @@ impl PalMock {
     }
 
     fn read(&self) -> RwLockReadGuard<'_, PalMockInner> {
-        self.inner
-            .read()
-            .expect("Unable to acquire read lock for mock PAL")
+        self.inner.read()
     }
 
     fn write(&self) -> RwLockWriteGuard<'_, PalMockInner> {
-        self.inner
-            .write()
-            .expect("Unable to acquire write lock for mock PAL")
+        self.inner.write()
     }
 
     pub fn log_effect(&self, effect: impl AsRef<str>) {

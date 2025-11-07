@@ -1,4 +1,7 @@
+use crate::coded_function::CodedFunction;
+use crate::environment::Environment;
 use crate::native_function::NativeFunction;
+use effy_ast::function_definition::FunctionDefinition;
 use effy_base::value::Value;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -7,6 +10,7 @@ use std::sync::Arc;
 pub enum ValueKind {
     PrimitiveValue(Value),
     NativeFunction(Arc<NativeFunction>),
+    CodedFunction(Arc<CodedFunction>),
 }
 
 #[derive(Clone)]
@@ -39,6 +43,18 @@ impl InterpreterValue {
         }
     }
 
+    pub fn coded_function(
+        function_definition: FunctionDefinition,
+        environment: Environment,
+    ) -> Self {
+        Self {
+            value_kind: ValueKind::CodedFunction(Arc::new(CodedFunction::new(
+                function_definition,
+                environment,
+            ))),
+        }
+    }
+
     pub fn value_kind(&self) -> &ValueKind {
         &self.value_kind
     }
@@ -58,6 +74,13 @@ impl Display for InterpreterValue {
             }
             ValueKind::NativeFunction(native_function) => {
                 write!(f, "<native function '{}'>", native_function.name())
+            }
+            ValueKind::CodedFunction(coded_function) => {
+                write!(
+                    f,
+                    "<coded function '{}'>",
+                    coded_function.function_definition().name().data.name
+                )
             }
         }
     }
